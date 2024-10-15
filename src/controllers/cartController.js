@@ -10,19 +10,66 @@ exports.createCart = async (req, res) => {
     let cart = await Cart.findOne({ userId });
 
     if (cart) {
-      cart.products = products;
+      cart.products = [];
     } else {
       cart = new Cart({
         userId,
-        products,
+        products: [],
       });
     }
 
     let subtotal = 0;
-    cart.products.forEach((product) => {
-      subtotal += product.price * product.quantity;
-    });
 
+    // Loop through each product, get its price from the product model
+    for (let item of products) {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        return res
+          .status(404)
+          .json({ message: `Product not found for ${item.productId}` });
+      }
+
+      const variant = product.variants.find((v) => v.color === item.color);
+      if (!variant) {
+        return res.status(404).json({
+          message: `Color variant not found for product ${product.productName}`,
+        });
+      }
+
+      const sizeVariant = variant.sizes.find((s) => s.size === item.size);
+      if (!sizeVariant) {
+        return res.status(404).json({
+          message: `Size ${item.size} not found for product ${product.productName}`,
+        });
+      }
+
+      // Check stock availability
+      if (sizeVariant.stock < item.quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for product ${product.productName}`,
+        });
+      }
+
+      // Calculate price and add to cart
+      cart.products.push({
+        productId: item.productId,
+        designerRef: product.designerRef,
+        price: sizeVariant.price, // Get price from size variant
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+        is_customizable: item.is_customizable || false,
+        customizations: item.customizations || "",
+      });
+
+      subtotal += sizeVariant.price * item.quantity;
+
+      // Update stock in the product model
+      sizeVariant.stock -= item.quantity;
+      await product.save();
+    }
+
+    // Set subtotal and calculate total amount
     cart.subtotal = subtotal;
     cart.total_amount = subtotal + cart.tax_amount + cart.shipping_cost;
 
@@ -33,78 +80,11 @@ exports.createCart = async (req, res) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ message: "Error creating/updating cart", error });
+      .json({ message: "Error creating/updating cart", error: error.message });
   }
 };
 
-exports.updateQuantity = async (req, res) => {
-  try {
-    const { userId, productId, size, color, quantity } = req.body;
-
-    // Find the cart for the user
-    let cart = await Cart.findOne({ userId });
-    if (!cart) return res.status(404).json({ message: "Cart not found" });
-
-    // Find the product in the product model
-    const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-
-    // Find the specific variant for the color
-    const variant = product.variants.find((v) => v.color === color);
-    if (!variant)
-      return res.status(404).json({ message: "Color variant not found" });
-
-    // Find the specific size from the variant
-    const sizeVariant = variant.sizes.find((s) => s.size === size);
-    if (!sizeVariant)
-      return res.status(404).json({ message: "Size not found" });
-
-    // Find the product in the cart
-    const productInCart = cart.products.find(
-      (item) =>
-        item.productId.toString() === productId.toString() &&
-        item.size === size &&
-        item.color === color
-    );
-
-    if (!productInCart)
-      return res.status(404).json({ message: "Product not found in cart" });
-
-    // Check if we are increasing or decreasing the quantity
-    const quantityChange = quantity - productInCart.quantity;
-
-    // Check if the new quantity exceeds available stock
-    if (quantityChange > 0 && sizeVariant.stock < quantityChange) {
-      return res.status(400).json({ message: "Insufficient stock" });
-    }
-
-    // Update the product quantity in the cart
-    productInCart.quantity = quantity;
-
-    // Update stock in the product model
-    sizeVariant.stock -= quantityChange; // If increasing, reduce stock, if decreasing, add back stock
-
-    await product.save();
-
-    // Recalculate the subtotal and total amount
-    let subtotal = 0;
-    cart.products.forEach((product) => {
-      subtotal += product.price * product.quantity;
-    });
-
-    cart.subtotal = subtotal;
-    cart.total_amount = subtotal + cart.tax_amount + cart.shipping_cost;
-
-    // Save the updated cart
-    await cart.save();
-
-    return res.status(200).json({ message: "Quantity updated", cart });
-  } catch (error) {
-    return res.status(500).json({ message: "Error updating quantity", error });
-  }
-};
-
-// Add Item to Cart with Stock Update
+// Add Item to Cart
 exports.addItemToCart = async (req, res) => {
   try {
     const {
@@ -128,9 +108,7 @@ exports.addItemToCart = async (req, res) => {
     if (!sizeVariant)
       return res.status(404).json({ message: "Size not found" });
 
-    const price = sizeVariant.price;
-
-    // Check if there is enough stock
+    // Check stock
     if (sizeVariant.stock < quantity) {
       return res.status(400).json({ message: "Insufficient stock" });
     }
@@ -144,6 +122,7 @@ exports.addItemToCart = async (req, res) => {
       });
     }
 
+    // Check if product already exists in the cart
     const productInCart = cart.products.find(
       (item) =>
         item.productId.toString() === productId.toString() &&
@@ -157,7 +136,7 @@ exports.addItemToCart = async (req, res) => {
       cart.products.push({
         productId,
         designerRef: product.designerRef,
-        price,
+        price: sizeVariant.price, // Use the actual price from the product model
         quantity,
         size,
         color,
@@ -166,10 +145,11 @@ exports.addItemToCart = async (req, res) => {
       });
     }
 
-    // Update stock in the product model
+    // Update stock
     sizeVariant.stock -= quantity;
     await product.save();
 
+    // Recalculate subtotal and total amount
     let subtotal = 0;
     cart.products.forEach((product) => {
       subtotal += product.price * product.quantity;
@@ -184,6 +164,68 @@ exports.addItemToCart = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error adding item to cart", error });
+  }
+};
+
+// Update Item Quantity
+exports.updateQuantity = async (req, res) => {
+  try {
+    const { userId, productId, size, color, quantity } = req.body;
+
+    let cart = await Cart.findOne({ userId });
+    if (!cart) return res.status(404).json({ message: "Cart not found" });
+
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const variant = product.variants.find((v) => v.color === color);
+    if (!variant)
+      return res.status(404).json({ message: "Color variant not found" });
+
+    const sizeVariant = variant.sizes.find((s) => s.size === size);
+    if (!sizeVariant)
+      return res.status(404).json({ message: "Size not found" });
+
+    const productInCart = cart.products.find(
+      (item) =>
+        item.productId.toString() === productId.toString() &&
+        item.size === size &&
+        item.color === color
+    );
+
+    if (!productInCart)
+      return res.status(404).json({ message: "Product not found in cart" });
+
+    // Check if we are increasing or decreasing the quantity
+    const quantityChange = quantity - productInCart.quantity;
+
+    // Check stock
+    if (quantityChange > 0 && sizeVariant.stock < quantityChange) {
+      return res.status(400).json({ message: "Insufficient stock" });
+    }
+
+    // Update the product quantity in the cart
+    productInCart.quantity = quantity;
+
+    // Update stock in the product model
+    sizeVariant.stock -= quantityChange;
+
+    await product.save();
+
+    // Recalculate subtotal and total amount
+    let subtotal = 0;
+    cart.products.forEach((product) => {
+      subtotal += product.price * product.quantity;
+    });
+
+    cart.subtotal = subtotal;
+    cart.total_amount = subtotal + cart.tax_amount + cart.shipping_cost;
+
+    await cart.save();
+
+    return res.status(200).json({ message: "Quantity updated", cart });
+  } catch (error) {
+    return res.status(500).json({ message: "Error updating quantity", error });
   }
 };
 
