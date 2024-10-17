@@ -271,3 +271,33 @@ exports.getProducts = async (req, res) => {
       .json({ message: "Error fetching products", error: error.message });
   }
 };
+
+exports.searchProducts = async (req, res) => {
+  try {
+    const { searchTerm, limit } = req.query;
+
+    if (!searchTerm) {
+      return res.status(400).json({ message: "Search term is required" });
+    }
+
+    const regex = new RegExp(searchTerm, "i"); // Case-insensitive partial match
+
+    // Find products matching the search term in the product name
+    const products = await Product.find({ productName: { $regex: regex } })
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name") // Populate subCategory name
+      .limit(parseInt(limit) || 10); // Limit the results (default 10)
+
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error searching products:", error);
+    return res.status(500).json({
+      message: "Error searching products",
+      error: error.message,
+    });
+  }
+};

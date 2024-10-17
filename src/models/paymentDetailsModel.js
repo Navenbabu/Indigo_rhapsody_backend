@@ -8,7 +8,11 @@ const paymentDetailsSchema = new mongoose.Schema({
   },
   paymentDetails: {
     type: String,
-    required: true,
+    // required: true,
+  },
+  cartId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Cart",
   },
   createdDate: {
     type: Date,
@@ -20,7 +24,7 @@ const paymentDetailsSchema = new mongoose.Schema({
   },
   paymentId: {
     type: String,
-    required: true,
+    // required: true,
   },
   paymentMethod: {
     type: String,

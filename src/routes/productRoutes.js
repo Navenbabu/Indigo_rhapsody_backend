@@ -7,5 +7,6 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post("/", upload.single("file"), productController.uploadBulkProducts);
 
 router.get("/products", productController.getProducts);
+router.get("/products/search", productController.searchProducts);
 
 module.exports = router;

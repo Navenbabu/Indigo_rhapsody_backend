@@ -3,10 +3,10 @@
 const multer = require("multer");
 const path = require("path");
 
-// Define storage strategy
-const storage = multer.memoryStorage(); // Store file in memory temporarily
+// Define storage strategy (memory storage for temporary Firebase uploads)
+const storage = multer.memoryStorage();
 
-// File filter to allow only image files
+// File filter to allow only specific file formats
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = [
     "image/jpeg",
@@ -14,22 +14,28 @@ const fileFilter = (req, file, cb) => {
     "image/gif",
     "application/pdf",
   ];
+
   if (allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
+    cb(null, true); // Accept the file
   } else {
-    cb(new Error("Only .jpeg, .png, .gif formats are allowed!"), false);
+    cb(
+      new Error("Only .jpeg, .png, .gif, and .pdf formats are allowed!"),
+      false
+    );
   }
 };
 
-// Set limits (optional)
+// Set limits on file size (optional)
 const limits = {
-  fileSize: 1024 * 1024 * 5, // Limit file size to 5MB
+  fileSize: 1024 * 1024 * 5, // 5MB limit
 };
 
+// Configure Multer middleware
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: limits,
+  storage,
+  fileFilter,
+  limits,
 });
 
+// Export the configured upload middleware
 module.exports = upload;

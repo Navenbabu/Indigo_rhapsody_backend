@@ -4,5 +4,7 @@ const cartController = require("../controllers/cartController");
 const orderController = require("../controllers/orderController");
 
 router.post("/", orderController.createOrder);
+router.get("/getOrders/:userId", orderController.getOrders);
+router.get("/getAllOrders", orderController.getAllOrders);
 
 module.exports = router;

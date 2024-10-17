@@ -85,6 +85,7 @@ exports.createCart = async (req, res) => {
 };
 
 // Add Item to Cart
+// Add Item to Cart
 exports.addItemToCart = async (req, res) => {
   try {
     const {
@@ -97,6 +98,7 @@ exports.addItemToCart = async (req, res) => {
       customizations,
     } = req.body;
 
+    // Fetch the product details
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
@@ -108,12 +110,12 @@ exports.addItemToCart = async (req, res) => {
     if (!sizeVariant)
       return res.status(404).json({ message: "Size not found" });
 
-    // Check stock
+    // Check stock availability
     if (sizeVariant.stock < quantity) {
       return res.status(400).json({ message: "Insufficient stock" });
     }
 
-    // Find the user's cart
+    // Find or create a cart for the user
     let cart = await Cart.findOne({ userId });
     if (!cart) {
       cart = new Cart({
@@ -122,7 +124,7 @@ exports.addItemToCart = async (req, res) => {
       });
     }
 
-    // Check if product already exists in the cart
+    // Check if the product already exists in the cart
     const productInCart = cart.products.find(
       (item) =>
         item.productId.toString() === productId.toString() &&
@@ -131,17 +133,19 @@ exports.addItemToCart = async (req, res) => {
     );
 
     if (productInCart) {
+      // If product exists, update the quantity
       productInCart.quantity += quantity;
     } else {
+      // If product does not exist, add it as a new item
       cart.products.push({
         productId,
         designerRef: product.designerRef,
-        price: sizeVariant.price, // Use the actual price from the product model
+        price: sizeVariant.price,
         quantity,
         size,
         color,
-        is_customizable,
-        customizations,
+        is_customizable: is_customizable || false,
+        customizations: customizations || "",
       });
     }
 
@@ -151,19 +155,22 @@ exports.addItemToCart = async (req, res) => {
 
     // Recalculate subtotal and total amount
     let subtotal = 0;
-    cart.products.forEach((product) => {
-      subtotal += product.price * product.quantity;
+    cart.products.forEach((item) => {
+      subtotal += item.price * item.quantity;
     });
 
     cart.subtotal = subtotal;
-    cart.total_amount = subtotal + cart.tax_amount + cart.shipping_cost;
+    cart.total_amount =
+      subtotal + (cart.tax_amount || 0) + (cart.shipping_cost || 0);
 
+    // Save the updated cart
     await cart.save();
+
     return res.status(201).json({ message: "Item added to cart", cart });
   } catch (error) {
     return res
       .status(500)
-      .json({ message: "Error adding item to cart", error });
+      .json({ message: "Error adding item to cart", error: error.message });
   }
 };
 

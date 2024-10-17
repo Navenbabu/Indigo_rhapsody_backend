@@ -4,23 +4,25 @@ const Product = require("../models/productModels");
 const Cart = require("../models/cartModel");
 const User = require("../models/userModel");
 
-// 1. Create an Order
+exports.UpdateShipmentId = async (req, res) => {};
 exports.createOrder = async (req, res) => {
   try {
     const { userId, cartId, paymentMethod, shippingDetails, notes } = req.body;
 
-    // Find the user's cart by cartId
+    // Find the user's cart by cartId and populate products with their SKUs
     const cart = await Cart.findOne({ _id: cartId, userId }).populate(
-      "products.productId"
+      "products.productId",
+      "productName sku variants"
     );
+
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
-    // Calculate total amount and prepare order details from cart
+    // Calculate total amount and prepare order details from the cart
     let totalAmount = 0;
     const orderProducts = cart.products.map((item) => {
       const product = item.productId;
 
-      // Check if variants exist and find the specific variant for color
+      // Find the specific variant by color
       const variant = product.variants
         ? product.variants.find((v) => v.color === item.color)
         : null;
@@ -31,7 +33,7 @@ exports.createOrder = async (req, res) => {
         );
       }
 
-      // Check if sizes exist within the variant
+      // Find the size variant within the selected color
       const sizeVariant = variant.sizes
         ? variant.sizes.find((s) => s.size === item.size)
         : null;
@@ -47,19 +49,22 @@ exports.createOrder = async (req, res) => {
 
       return {
         productId: item.productId._id,
+        productName: product.productName,
         quantity: item.quantity,
         size: item.size,
         color: item.color,
+        sku: product.sku, // Include SKU from the product model
         price: price,
         discount: item.discount || 0,
       };
     });
 
-    // Create the order
+    // Create the new order
     const order = new Order({
       userId,
+
       amount: totalAmount,
-      cartId: cart._id, // Store the cartId for reference
+      cartId: cart._id,
       products: orderProducts,
       paymentMethod,
       shippingDetails,
@@ -70,7 +75,7 @@ exports.createOrder = async (req, res) => {
     // Save the order
     await order.save();
 
-    // Clear the user's cart after order creation
+    // Clear the user's cart after the order is created
     cart.products = [];
     await cart.save();
 
@@ -78,6 +83,7 @@ exports.createOrder = async (req, res) => {
       .status(201)
       .json({ message: "Order created successfully", order });
   } catch (error) {
+    console.error("Error creating order:", error);
     return res
       .status(500)
       .json({ message: "Error creating order", error: error.message });

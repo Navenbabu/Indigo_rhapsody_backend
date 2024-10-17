@@ -10,10 +10,12 @@ const OrderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  shipmentId: {
+    type: String,
+  },
   cartId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Cart",
-    required: true,
   },
   items: [
     {
@@ -29,6 +31,15 @@ const OrderSchema = new mongoose.Schema({
       productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Product",
+        required: true,
+      },
+      productName: {
+        type: String,
+        required: true,
+      },
+
+      sku: {
+        type: String,
         required: true,
       },
       quantity: {
