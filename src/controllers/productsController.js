@@ -39,6 +39,49 @@ const uploadImageFromURL = async (imageUrl, filename) => {
   }
 };
 
+exports.searchProductsByDesigner = async (req, res) => {
+  try {
+    const { designerRef, searchTerm, limit } = req.query;
+
+    if (!designerRef) {
+      return res
+        .status(400)
+        .json({ message: "Designer reference is required" });
+    }
+
+    const query = { designerRef };
+
+    // Add search term if provided
+    if (searchTerm) {
+      const regex = new RegExp(searchTerm, "i"); // Case-insensitive partial match
+      query.productName = { $regex: regex }; // Match product name based on searchTerm
+    }
+
+    // Limit the number of results, defaulting to 10
+    const productLimit = parseInt(limit) || 10;
+
+    // Query the products based on designerRef and optional searchTerm
+    const products = await Product.find(query)
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name") // Populate subCategory name
+      .limit(productLimit);
+
+    if (products.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No products found for this designer" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error searching products by designer:", error);
+    return res.status(500).json({
+      message: "Error searching products by designer",
+      error: error.message,
+    });
+  }
+};
+
 exports.uploadSingleProduct = async (req, res) => {
   try {
     const {

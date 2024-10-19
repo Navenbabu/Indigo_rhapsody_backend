@@ -37,6 +37,9 @@ const OrderSchema = new mongoose.Schema({
         type: String,
         required: true,
       },
+      designerRef: {
+        type: String,
+      },
 
       sku: {
         type: String,

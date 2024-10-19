@@ -20,7 +20,7 @@ exports.createCart = async (req, res) => {
 
     let subtotal = 0;
 
-    // Loop through each product, get its price from the product model
+    // Loop through each product and calculate price
     for (let item of products) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -50,11 +50,11 @@ exports.createCart = async (req, res) => {
         });
       }
 
-      // Calculate price and add to cart
+      // Add product to cart
       cart.products.push({
         productId: item.productId,
         designerRef: product.designerRef,
-        price: sizeVariant.price, // Get price from size variant
+        price: sizeVariant.price,
         quantity: item.quantity,
         size: item.size,
         color: item.color,
@@ -64,14 +64,22 @@ exports.createCart = async (req, res) => {
 
       subtotal += sizeVariant.price * item.quantity;
 
-      // Update stock in the product model
+      // Update product stock
       sizeVariant.stock -= item.quantity;
       await product.save();
     }
 
-    // Set subtotal and calculate total amount
+    // Calculate GST (12%)
+    const gst = subtotal * 0.12;
+
+    // Calculate delivery fee based on subtotal
+    const deliveryFee = subtotal > 3000 ? 0 : 99;
+
+    // Calculate total amount (subtotal + GST + delivery fee)
     cart.subtotal = subtotal;
-    cart.total_amount = subtotal + cart.tax_amount + cart.shipping_cost;
+    cart.gst_amount = gst;
+    cart.delivery_fee = deliveryFee;
+    cart.total_amount = subtotal + gst + deliveryFee;
 
     await cart.save();
     return res
@@ -98,7 +106,6 @@ exports.addItemToCart = async (req, res) => {
       customizations,
     } = req.body;
 
-    // Fetch the product details
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
@@ -110,21 +117,15 @@ exports.addItemToCart = async (req, res) => {
     if (!sizeVariant)
       return res.status(404).json({ message: "Size not found" });
 
-    // Check stock availability
     if (sizeVariant.stock < quantity) {
       return res.status(400).json({ message: "Insufficient stock" });
     }
 
-    // Find or create a cart for the user
     let cart = await Cart.findOne({ userId });
     if (!cart) {
-      cart = new Cart({
-        userId,
-        products: [],
-      });
+      cart = new Cart({ userId, products: [] });
     }
 
-    // Check if the product already exists in the cart
     const productInCart = cart.products.find(
       (item) =>
         item.productId.toString() === productId.toString() &&
@@ -133,10 +134,8 @@ exports.addItemToCart = async (req, res) => {
     );
 
     if (productInCart) {
-      // If product exists, update the quantity
       productInCart.quantity += quantity;
     } else {
-      // If product does not exist, add it as a new item
       cart.products.push({
         productId,
         designerRef: product.designerRef,
@@ -149,23 +148,23 @@ exports.addItemToCart = async (req, res) => {
       });
     }
 
-    // Update stock
     sizeVariant.stock -= quantity;
     await product.save();
 
-    // Recalculate subtotal and total amount
     let subtotal = 0;
     cart.products.forEach((item) => {
       subtotal += item.price * item.quantity;
     });
 
+    const gst = subtotal * 0.12;
+    const deliveryFee = subtotal > 3000 ? 0 : 99;
+
     cart.subtotal = subtotal;
-    cart.total_amount =
-      subtotal + (cart.tax_amount || 0) + (cart.shipping_cost || 0);
+    cart.gst_amount = gst;
+    cart.delivery_fee = deliveryFee;
+    cart.total_amount = subtotal + gst + deliveryFee;
 
-    // Save the updated cart
     await cart.save();
-
     return res.status(201).json({ message: "Item added to cart", cart });
   } catch (error) {
     return res
@@ -203,36 +202,35 @@ exports.updateQuantity = async (req, res) => {
     if (!productInCart)
       return res.status(404).json({ message: "Product not found in cart" });
 
-    // Check if we are increasing or decreasing the quantity
     const quantityChange = quantity - productInCart.quantity;
-
-    // Check stock
     if (quantityChange > 0 && sizeVariant.stock < quantityChange) {
       return res.status(400).json({ message: "Insufficient stock" });
     }
 
-    // Update the product quantity in the cart
     productInCart.quantity = quantity;
-
-    // Update stock in the product model
     sizeVariant.stock -= quantityChange;
 
     await product.save();
 
-    // Recalculate subtotal and total amount
     let subtotal = 0;
     cart.products.forEach((product) => {
       subtotal += product.price * product.quantity;
     });
 
+    const gst = subtotal * 0.12;
+    const deliveryFee = subtotal > 3000 ? 0 : 99;
+
     cart.subtotal = subtotal;
-    cart.total_amount = subtotal + cart.tax_amount + cart.shipping_cost;
+    cart.gst_amount = gst;
+    cart.delivery_fee = deliveryFee;
+    cart.total_amount = subtotal + gst + deliveryFee;
 
     await cart.save();
-
     return res.status(200).json({ message: "Quantity updated", cart });
   } catch (error) {
-    return res.status(500).json({ message: "Error updating quantity", error });
+    return res
+      .status(500)
+      .json({ message: "Error updating quantity", error: error.message });
   }
 };
 

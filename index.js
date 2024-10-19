@@ -11,10 +11,12 @@ const userRoutes = require("./src/routes/userRoutes.js");
 const shippingRoutes = require("./src/routes/shippingRoutes.js");
 const designerRoutes = require("./src/routes/designerRoutes.js");
 const app = express();
+const cors = require("cors");
 
 connectDB();
 
 app.use(express.json());
+app.use(cors());
 
 app.use("/products", productRoutes);
 app.use("/category", categoryRoutes);

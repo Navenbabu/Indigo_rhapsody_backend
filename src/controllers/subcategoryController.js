@@ -8,59 +8,38 @@ exports.createSubCategory = async (req, res) => {
   try {
     const { name, categoryId } = req.body;
 
+    console.log("Received Category ID:", categoryId); // Log the categoryId
+
     // Check if the categoryId is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+    if (!mongoose.Types.ObjectId.isValid(categoryId.trim())) {
       return res.status(400).json({ message: "Invalid category ID format" });
     }
 
     // Verify if the category exists
-    const category = await Category.findById(categoryId);
+    const category = await Category.findById(categoryId.trim());
+    console.log("Category found:", category); // Log the category object
+
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
 
-    // Handle image upload to Firebase Storage (if image is provided)
-    let imageUrl = "";
-    if (req.file) {
-      const file = req.file;
-      const blob = bucket.file(
-        `subcategories/${Date.now()}_${file.originalname}`
-      );
-      const blobStream = blob.createWriteStream({
-        metadata: {
-          contentType: file.mimetype,
-        },
-      });
+    // Create the new subcategory
+    const newSubCategory = new SubCategory({
+      name,
+      categoryId: category._id,
+    });
 
-      blobStream.on("finish", async () => {
-        const firebaseUrl = await blob.getSignedUrl({
-          action: "read",
-          expires: "03-09-2491",
-        });
-        imageUrl = firebaseUrl[0];
+    await newSubCategory.save();
 
-        // Create the new subcategory after the image is uploaded
-        const newSubCategory = new SubCategory({
-          name,
-          categoryId,
-          image: imageUrl,
-        });
-
-        await newSubCategory.save();
-        return res.status(201).json({
-          message: "SubCategory created successfully",
-          newSubCategory,
-        });
-      });
-
-      blobStream.end(req.file.buffer);
-    } else {
-      return res.status(400).json({ message: "Image is required" });
-    }
+    return res.status(201).json({
+      message: "SubCategory created successfully",
+      newSubCategory,
+    });
   } catch (error) {
+    console.error("Error creating subcategory:", error);
     return res
       .status(500)
-      .json({ message: "Error creating subcategory", error });
+      .json({ message: "Error creating subcategory", error: error.message });
   }
 };
 
@@ -163,7 +142,42 @@ exports.updateSubCategory = async (req, res) => {
   }
 };
 
-// 5. Delete SubCategory by ID
+exports.getSubCategoriesByCategoryId = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    // Validate the categoryId
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+      return res.status(400).json({ message: "Invalid category ID format" });
+    }
+
+    // Ensure the category exists
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    // Fetch subcategories that belong to this category
+    const subCategories = await SubCategory.find({
+      categoryId: categoryId,
+    }).populate("categoryId", "name"); // Populate category name
+
+    if (subCategories.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No subcategories found for this category" });
+    }
+
+    return res.status(200).json({ subCategories });
+  } catch (error) {
+    console.error("Error fetching subcategories:", error);
+    return res.status(500).json({
+      message: "Error fetching subcategories",
+      error: error.message,
+    });
+  }
+};
+
 exports.deleteSubCategory = async (req, res) => {
   try {
     const { subCategoryId } = req.params;
