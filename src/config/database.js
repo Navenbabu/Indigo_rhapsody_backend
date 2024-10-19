@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 
-const MONGODB_URI = "mongodb://localhost:27017/indigoRhapsody";
+const MONGODB_URI = "mongodb+srv://vercel-admin-user:<testpwd123 >@cluster0.f3uf4.mongodb.net/";
 
 const connectDB = async () => {
   try {
