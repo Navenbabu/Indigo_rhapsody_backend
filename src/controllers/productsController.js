@@ -344,3 +344,31 @@ exports.searchProducts = async (req, res) => {
     });
   }
 };
+
+exports.getLatestProducts = async (req, res) => {
+  try {
+    const { limit } = req.query;
+
+    // Default limit is 10 if not provided
+    const productLimit = parseInt(limit) || 10;
+
+    // Fetch latest products sorted by createdDate in descending order
+    const latestProducts = await Product.find()
+      .sort({ createdDate: -1 }) // Sort by latest first
+      .limit(productLimit) // Limit the results
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name"); // Populate subcategory name
+
+    if (latestProducts.length === 0) {
+      return res.status(404).json({ message: "No latest products found" });
+    }
+
+    return res.status(200).json({ products: latestProducts });
+  } catch (error) {
+    console.error("Error fetching latest products:", error);
+    return res.status(500).json({
+      message: "Error fetching latest products",
+      error: error.message,
+    });
+  }
+};
