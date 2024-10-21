@@ -12,6 +12,7 @@ const shippingRoutes = require("./src/routes/shippingRoutes.js");
 const designerRoutes = require("./src/routes/designerRoutes.js");
 const bannerRoutes = require("./src/routes/bannerRoutes.js");
 const filterRoutes = require("./src/routes/filterRoutes.js");
+const videoRoutes = require("./src/routes/contentVideoRoutes.js");
 const app = express();
 
 const cors = require("cors");
@@ -32,6 +33,7 @@ app.use("/shipping", shippingRoutes);
 app.use("/designer", designerRoutes);
 app.use("/banner", bannerRoutes);
 app.use("/filter", filterRoutes);
+app.use("/video", videoRoutes);
 
 const PORT = 5000;
 
