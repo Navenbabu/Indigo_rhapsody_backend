@@ -6,3 +6,6 @@ coverimage
 
 #more features added for products
 
+
+#get products by subcategoryId
+
