@@ -11,7 +11,9 @@ const userRoutes = require("./src/routes/userRoutes.js");
 const shippingRoutes = require("./src/routes/shippingRoutes.js");
 const designerRoutes = require("./src/routes/designerRoutes.js");
 const bannerRoutes = require("./src/routes/bannerRoutes.js");
+const filterRoutes = require("./src/routes/filterRoutes.js");
 const app = express();
+
 const cors = require("cors");
 
 connectDB();
@@ -29,6 +31,7 @@ app.use("/user", userRoutes);
 app.use("/shipping", shippingRoutes);
 app.use("/designer", designerRoutes);
 app.use("/banner", bannerRoutes);
+app.use("/filter", filterRoutes);
 
 const PORT = 5000;
 
