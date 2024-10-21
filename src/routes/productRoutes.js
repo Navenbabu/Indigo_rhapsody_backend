@@ -12,7 +12,7 @@ router.get("/products/search", productController.searchProducts);
 router.get("/designerSearch", productController.searchProductsByDesigner);
 router.get("/latestProducts", productController.getLatestProducts);
 router.get(
-  "/products/subCategory/:subCategoryId",
+  "/subCategory/:subCategoryId",
   productController.getProductsBySubCategory
 );
 module.exports = router;
