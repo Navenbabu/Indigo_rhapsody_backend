@@ -9,3 +9,5 @@ coverimage
 
 #get products by subcateg
 
+##filters for products
+
