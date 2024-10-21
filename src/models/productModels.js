@@ -61,6 +61,9 @@ const productsSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  coverImage: {
+    type: String, // Store the URL of the cover image
+  },
   variants: [
     {
       color: {
@@ -70,7 +73,7 @@ const productsSchema = new mongoose.Schema({
       imageList: [
         {
           type: String,
-          required: true, // Each color variant can have its own images
+          required: true,
         },
       ],
       sizes: [

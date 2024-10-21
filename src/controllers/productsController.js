@@ -139,7 +139,7 @@ exports.uploadBulkProducts = async (req, res) => {
     const file = req.file; // Multer handles file upload
     if (!file) return res.status(400).json({ message: "No file uploaded" });
 
-    // Read the Excel file from buffer (since using memoryStorage in Multer)
+    // Read the Excel file from buffer
     const workbook = xlsx.read(file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
@@ -148,7 +148,6 @@ exports.uploadBulkProducts = async (req, res) => {
 
     // Iterate through each row in Excel
     for (const row of sheetData) {
-      // Find or create Category and SubCategory
       const categoryDoc = await Category.findOneAndUpdate(
         { name: row.category },
         { name: row.category },
@@ -161,11 +160,26 @@ exports.uploadBulkProducts = async (req, res) => {
         { upsert: true, new: true }
       );
 
-      // Create or aggregate product data
       const productName = row.productName.trim().toLowerCase();
 
-      // Initialize or update the product in the products map
+      // Initialize product if not already present
       if (!products[productName]) {
+        const coverImageUrl = row.coverImageUrl;
+        let coverImageFirebaseUrl = "";
+
+        // Upload cover image if provided
+        if (coverImageUrl) {
+          try {
+            const filename = coverImageUrl.split("/").pop();
+            coverImageFirebaseUrl = await uploadImageFromURL(
+              coverImageUrl,
+              filename
+            );
+          } catch (error) {
+            console.error(`Failed to upload cover image from ${coverImageUrl}`);
+          }
+        }
+
         products[productName] = {
           productName: row.productName,
           description: row.description,
@@ -173,21 +187,14 @@ exports.uploadBulkProducts = async (req, res) => {
           sku: row.sku,
           category: categoryDoc._id,
           subCategory: subCategoryDoc._id,
-          fit: row.fit,
-          productDetails: row.productDetails,
-          material: row.material,
-          is_customizable: row.is_customizable || false,
-          fabric: row.fabric,
-          is_sustainable: row.is_sustainable || false,
-          in_stock: row.in_stock || true,
           designerRef: row.designerRef,
           createdDate: new Date(),
-          stock: row.stock || 0,
+          coverImage: row.imageList, // Store cover image URL
           variants: [],
         };
       }
 
-      // Prepare variants
+      // Handle product variant
       let variant = products[productName].variants.find(
         (v) => v.color === row.color
       );
@@ -201,21 +208,24 @@ exports.uploadBulkProducts = async (req, res) => {
         products[productName].variants.push(variant);
       }
 
-      // Upload images for the color variant
+      // Upload images for the variant
       if (row.imageUrls) {
         const imageUrls = row.imageUrls.split(",");
         for (const url of imageUrls) {
-          const filename = url.split("/").pop(); // Get the filename from the URL
-          const firebaseUrl = await uploadImageFromURL(url, filename);
-          if (!variant.imageList.includes(firebaseUrl)) {
-            variant.imageList.push(firebaseUrl); // Avoid duplicates
+          try {
+            const filename = url.split("/").pop();
+            const firebaseUrl = await uploadImageFromURL(url, filename);
+            if (!variant.imageList.includes(firebaseUrl)) {
+              variant.imageList.push(firebaseUrl); // Avoid duplicates
+            }
+          } catch (error) {
+            console.error(`Failed to upload image from ${url}:`, error.message);
           }
         }
       }
 
-      // Add size, price, and stock to the variant (size variant handling)
-      const sizeExists = variant.sizes.find((size) => size.size === row.size);
-      if (!sizeExists) {
+      // Add size to the variant
+      if (!variant.sizes.find((size) => size.size === row.size)) {
         variant.sizes.push({
           size: row.size,
           price: row.price,
@@ -224,11 +234,9 @@ exports.uploadBulkProducts = async (req, res) => {
       }
     }
 
-    // Upsert (create or update) each product in the database
+    // Upsert (create or update) products in the database
     for (const productName in products) {
       const productData = products[productName];
-
-      // Find the product by name and update or create it
       await Product.findOneAndUpdate(
         { productName: productData.productName },
         { $set: productData },
@@ -238,9 +246,11 @@ exports.uploadBulkProducts = async (req, res) => {
 
     return res.status(201).json({ message: "Products uploaded successfully" });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error uploading products", error: error.message });
+    console.error("Error uploading products:", error.message);
+    return res.status(500).json({
+      message: "Error uploading products",
+      error: error.message,
+    });
   }
 };
 
