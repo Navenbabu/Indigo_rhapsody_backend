@@ -413,3 +413,33 @@ exports.getProductsById = async (req, res) => {
     });
   }
 };
+
+exports.getProductsBySubCategory = async (req, res) => {
+  try {
+    const { subCategoryId } = req.params;
+
+    // Validate the subCategoryId format
+    if (!mongoose.isValidObjectId(subCategoryId)) {
+      return res.status(400).json({ message: "Invalid subCategory ID" });
+    }
+
+    // Query the products by subCategoryId
+    const products = await Product.find({ subCategory: subCategoryId })
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name"); // Populate subcategory name
+
+    if (products.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No products found for this subcategory" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error fetching products by subcategory:", error);
+    return res.status(500).json({
+      message: "Error fetching products by subcategory",
+      error: error.message,
+    });
+  }
+};
