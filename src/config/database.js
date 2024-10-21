@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 require("dotenv").config();
 
-const MONGODB_URI = "mongodb://localhost:27017/indigoRhapsody";
+const MONGODB_URI =
+  "mongodb+srv://vercel-admin-user:XM542odoAQkOSCxt@cluster0.f3uf4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const connectDB = async () => {
   try {

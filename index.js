@@ -10,6 +10,7 @@ const paymentRoutes = require("./src/routes/paymentRoutes.js");
 const userRoutes = require("./src/routes/userRoutes.js");
 const shippingRoutes = require("./src/routes/shippingRoutes.js");
 const designerRoutes = require("./src/routes/designerRoutes.js");
+const bannerRoutes = require("./src/routes/bannerRoutes.js");
 const app = express();
 const cors = require("cors");
 
@@ -27,6 +28,7 @@ app.use("/payment", paymentRoutes);
 app.use("/user", userRoutes);
 app.use("/shipping", shippingRoutes);
 app.use("/designer", designerRoutes);
+app.use("/banner", bannerRoutes);
 
 const PORT = 5000;
 
