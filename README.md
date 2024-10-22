@@ -27,3 +27,7 @@ cart features
 order controller updated
 
 
+product Controller updated
+
+
+
