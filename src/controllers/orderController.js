@@ -74,7 +74,22 @@ exports.getTotalOrdersOfparticularDesigner = async (req, res) => {};
 // Create Order Controller
 exports.createOrder = async (req, res) => {
   try {
-    const { userId, cartId, paymentMethod, shippingDetails, notes } = req.body;
+    const { userId, cartId, paymentMethod, notes } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const shippingDetails = {
+      address: {
+        street: user.address, // Adjust field names based on your User model
+        city: user.city,
+        state: user.state,
+        pincode: user.pincode,
+        country: user.country || "Default Country", // Provide default if necessary
+      },
+      phoneNumber: user.phoneNumber,
+      // Include any other necessary fields
+    };
 
     // Find the user's cart and populate product details
     const cart = await Cart.findOne({ _id: cartId, userId }).populate(
@@ -133,7 +148,7 @@ exports.createOrder = async (req, res) => {
     await cart.save();
 
     // Get the user's email address
-    const user = await User.findById(userId);
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const email = user.email;
@@ -222,7 +237,7 @@ exports.getOrdersByDesignerRef = async (req, res) => {
         orderId: order.orderId,
         userId: order.userId,
         products: designerProducts,
-        amount: designerAmount, 
+        amount: designerAmount,
         paymentMethod: order.paymentMethod,
         status: order.status,
         createdAt: order.createdAt,
@@ -242,7 +257,6 @@ exports.getOrdersByDesignerRef = async (req, res) => {
       .json({ message: "Error fetching orders", error: error.message });
   }
 };
-
 
 exports.getOrders = async (req, res) => {
   try {
