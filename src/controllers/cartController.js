@@ -3,6 +3,7 @@ const Cart = require("../models/cartModel");
 const Product = require("../models/productModels");
 
 // Create or Update Cart
+// Create or Update Cart
 exports.createCart = async (req, res) => {
   try {
     const { userId, products } = req.body;
@@ -10,6 +11,7 @@ exports.createCart = async (req, res) => {
     let cart = await Cart.findOne({ userId });
 
     if (cart) {
+      // Reset the products array if cart already exists
       cart.products = [];
     } else {
       cart = new Cart({
@@ -69,29 +71,31 @@ exports.createCart = async (req, res) => {
       await product.save();
     }
 
-    // Calculate GST (12%)
-    const gst = subtotal * 0.12;
+    // Calculate Tax Amount (GST at 12%)
+    const tax_amount = subtotal * 0.12;
 
-    // Calculate delivery fee based on subtotal
-    const deliveryFee = subtotal > 3000 ? 0 : 99;
+    // Calculate Shipping Cost based on subtotal
+    const shipping_cost = subtotal > 3000 ? 0 : 99;
 
-    // Calculate total amount (subtotal + GST + delivery fee)
+    // Calculate Total Amount
     cart.subtotal = subtotal;
-    cart.gst_amount = gst;
-    cart.delivery_fee = deliveryFee;
-    cart.total_amount = subtotal + gst + deliveryFee;
+    cart.tax_amount = tax_amount;
+    cart.shipping_cost = shipping_cost;
+    cart.total_amount = subtotal + tax_amount + shipping_cost;
 
     await cart.save();
     return res
       .status(201)
       .json({ message: "Cart created/updated successfully", cart });
   } catch (error) {
+    console.error("Error creating/updating cart:", error);
     return res
       .status(500)
       .json({ message: "Error creating/updating cart", error: error.message });
   }
 };
 
+// Add Item to Cart
 // Add Item to Cart
 // Add Item to Cart
 exports.addItemToCart = async (req, res) => {
@@ -151,28 +155,31 @@ exports.addItemToCart = async (req, res) => {
     sizeVariant.stock -= quantity;
     await product.save();
 
+    // Recalculate totals
     let subtotal = 0;
     cart.products.forEach((item) => {
       subtotal += item.price * item.quantity;
     });
 
-    const gst = subtotal * 0.12;
-    const deliveryFee = subtotal > 3000 ? 0 : 99;
+    const tax_amount = subtotal * 0.12;
+    const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     cart.subtotal = subtotal;
-    cart.gst_amount = gst;
-    cart.delivery_fee = deliveryFee;
-    cart.total_amount = subtotal + gst + deliveryFee;
+    cart.tax_amount = tax_amount;
+    cart.shipping_cost = shipping_cost;
+    cart.total_amount = subtotal + tax_amount + shipping_cost;
 
     await cart.save();
     return res.status(201).json({ message: "Item added to cart", cart });
   } catch (error) {
+    console.error("Error adding item to cart:", error);
     return res
       .status(500)
       .json({ message: "Error adding item to cart", error: error.message });
   }
 };
 
+// Update Item Quantity
 // Update Item Quantity
 exports.updateQuantity = async (req, res) => {
   try {
@@ -212,28 +219,31 @@ exports.updateQuantity = async (req, res) => {
 
     await product.save();
 
+    // Recalculate totals
     let subtotal = 0;
-    cart.products.forEach((product) => {
-      subtotal += product.price * product.quantity;
+    cart.products.forEach((item) => {
+      subtotal += item.price * item.quantity;
     });
 
-    const gst = subtotal * 0.12;
-    const deliveryFee = subtotal > 3000 ? 0 : 99;
+    const tax_amount = subtotal * 0.12;
+    const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     cart.subtotal = subtotal;
-    cart.gst_amount = gst;
-    cart.delivery_fee = deliveryFee;
-    cart.total_amount = subtotal + gst + deliveryFee;
+    cart.tax_amount = tax_amount;
+    cart.shipping_cost = shipping_cost;
+    cart.total_amount = subtotal + tax_amount + shipping_cost;
 
     await cart.save();
     return res.status(200).json({ message: "Quantity updated", cart });
   } catch (error) {
+    console.error("Error updating quantity:", error);
     return res
       .status(500)
       .json({ message: "Error updating quantity", error: error.message });
   }
 };
 
+// Delete Item from Cart and Update Stock
 // Delete Item from Cart and Update Stock
 exports.deleteItem = async (req, res) => {
   try {
@@ -276,21 +286,27 @@ exports.deleteItem = async (req, res) => {
         )
     );
 
-    // Recalculate subtotal and total amount
+    // Recalculate totals
     let subtotal = 0;
-    cart.products.forEach((product) => {
-      subtotal += product.price * product.quantity;
+    cart.products.forEach((item) => {
+      subtotal += item.price * item.quantity;
     });
 
+    const tax_amount = subtotal * 0.12;
+    const shipping_cost = subtotal > 3000 ? 0 : 99;
+
     cart.subtotal = subtotal;
-    cart.total_amount = subtotal + cart.tax_amount + cart.shipping_cost;
+    cart.tax_amount = tax_amount;
+    cart.shipping_cost = shipping_cost;
+    cart.total_amount = subtotal + tax_amount + shipping_cost;
 
     await cart.save();
     return res.status(200).json({ message: "Item deleted from cart", cart });
   } catch (error) {
+    console.error("Error deleting item from cart:", error);
     return res
       .status(500)
-      .json({ message: "Error deleting item from cart", error });
+      .json({ message: "Error deleting item from cart", error: error.message });
   }
 };
 
@@ -311,7 +327,7 @@ exports.getCartForUser = async (req, res) => {
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
     // Map through cart products to append size, price, and color info
-    const populatedCart = cart.products.map((item) => {
+    const populatedProducts = cart.products.map((item) => {
       const product = item.productId;
       const variant = product.variants.find((v) => v.color === item.color);
 
@@ -331,10 +347,17 @@ exports.getCartForUser = async (req, res) => {
       return item;
     });
 
-    return res
-      .status(200)
-      .json({ cart: { ...cart.toObject(), products: populatedCart } });
+    const responseCart = {
+      ...cart.toObject(),
+      products: populatedProducts,
+      tax_amount: cart.tax_amount,
+      shipping_cost: cart.shipping_cost,
+      total_amount: cart.total_amount,
+    };
+
+    return res.status(200).json({ cart: responseCart });
   } catch (error) {
+    console.error("Error fetching cart:", error);
     return res.status(500).json({ message: "Error fetching cart", error });
   }
 };
