@@ -1,5 +1,34 @@
 const mongoose = require("mongoose");
 
+const sizeSchema = new mongoose.Schema({
+  size: {
+    type: String,
+    required: true,
+  },
+  price: {
+    type: Number,
+    required: true,
+  },
+  stock: {
+    type: Number,
+    default: 0,
+  },
+});
+
+const variantSchema = new mongoose.Schema({
+  color: {
+    type: String,
+    required: true,
+  },
+  imageList: [
+    {
+      type: String,
+      required: true,
+    },
+  ],
+  sizes: [sizeSchema],
+});
+
 const productsSchema = new mongoose.Schema({
   productName: {
     type: String,
@@ -27,24 +56,12 @@ const productsSchema = new mongoose.Schema({
     ref: "SubCategory",
     required: true,
   },
-  fit: {
-    type: String,
-  },
-  productDetails: {
-    type: String,
-  },
-  material: {
-    type: String,
-  },
-  is_customizable: {
-    type: Boolean,
-  },
-  fabric: {
-    type: String,
-  },
-  is_sustainable: {
-    type: Boolean,
-  },
+  fit: String,
+  productDetails: String,
+  material: String,
+  is_customizable: Boolean,
+  fabric: String,
+  is_sustainable: Boolean,
   in_stock: {
     type: Boolean,
     default: true,
@@ -64,36 +81,7 @@ const productsSchema = new mongoose.Schema({
   coverImage: {
     type: String, // Store the URL of the cover image
   },
-  variants: [
-    {
-      color: {
-        type: String,
-        required: true,
-      },
-      imageList: [
-        {
-          type: String,
-          required: true,
-        },
-      ],
-      sizes: [
-        {
-          size: {
-            type: String,
-            required: true,
-          },
-          price: {
-            type: Number,
-            required: true,
-          },
-          stock: {
-            type: Number,
-            default: 0,
-          },
-        },
-      ],
-    },
-  ],
+  variants: [variantSchema], // Embed variant schema inside product schema
   discount: {
     type: Number,
     default: 0,
@@ -111,9 +99,7 @@ const productsSchema = new mongoose.Schema({
         max: 5,
         required: true,
       },
-      comment: {
-        type: String,
-      },
+      comment: String,
       createdDate: {
         type: Date,
         default: Date.now,
@@ -122,11 +108,11 @@ const productsSchema = new mongoose.Schema({
   ],
   totalRatings: {
     type: Number,
-    default: 0, // Total number of ratings
+    default: 0,
   },
   averageRating: {
     type: Number,
-    default: 0, // Average rating of the product (calculated based on reviews)
+    default: 0,
   },
 });
 

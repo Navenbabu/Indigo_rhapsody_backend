@@ -15,4 +15,8 @@ router.get(
   "/subCategory/:subCategoryId",
   productController.getProductsBySubCategory
 );
+router.get(
+  "/products/:productId/variants/:color",
+  productController.getProductVariantByColor
+);
 module.exports = router;

@@ -137,6 +137,7 @@ exports.uploadSingleProduct = async (req, res) => {
 exports.uploadBulkProducts = async (req, res) => {
   try {
     const file = req.file; // Multer handles file upload
+
     if (!file) return res.status(400).json({ message: "No file uploaded" });
 
     // Read the Excel file from buffer
@@ -162,21 +163,18 @@ exports.uploadBulkProducts = async (req, res) => {
 
       const productName = row.productName.trim().toLowerCase();
 
-      // Initialize product if not already present
+      // Initialize product if it doesn't already exist
       if (!products[productName]) {
-        const coverImageUrl = row.coverImageUrl;
         let coverImageFirebaseUrl = "";
-
-        // Upload cover image if provided
-        if (coverImageUrl) {
+        if (row.coverImageUrl) {
           try {
-            const filename = coverImageUrl.split("/").pop();
+            const filename = row.coverImageUrl.split("/").pop();
             coverImageFirebaseUrl = await uploadImageFromURL(
-              coverImageUrl,
+              row.coverImageUrl,
               filename
             );
           } catch (error) {
-            console.error(`Failed to upload cover image from ${coverImageUrl}`);
+            console.error(`Failed to upload cover image: ${error.message}`);
           }
         }
 
@@ -192,7 +190,7 @@ exports.uploadBulkProducts = async (req, res) => {
           subCategory: subCategoryDoc._id,
           designerRef: row.designerRef,
           createdDate: new Date(),
-          coverImage: row.imageList, // Store cover image URL
+          coverImage: coverImageFirebaseUrl,
           variants: [],
         };
       }
@@ -222,7 +220,7 @@ exports.uploadBulkProducts = async (req, res) => {
               variant.imageList.push(firebaseUrl); // Avoid duplicates
             }
           } catch (error) {
-            console.error(`Failed to upload image from ${url}:`, error.message);
+            console.error(`Failed to upload image: ${error.message}`);
           }
         }
       }
@@ -231,8 +229,8 @@ exports.uploadBulkProducts = async (req, res) => {
       if (!variant.sizes.find((size) => size.size === row.size)) {
         variant.sizes.push({
           size: row.size,
-          price: row.price,
-          stock: row.stock || 0,
+          price: row.sizePrice || row.price, // Handle size-specific price
+          stock: row.sizeStock || row.stock || 0, // Handle size-specific stock
         });
       }
     }
@@ -389,6 +387,7 @@ exports.getLatestProducts = async (req, res) => {
 exports.getProductsById = async (req, res) => {
   try {
     const { productId } = req.params;
+    const { color } = req.query; // Accept color as a query parameter
 
     // Validate the productId format
     if (!mongoose.isValidObjectId(productId)) {
@@ -397,14 +396,49 @@ exports.getProductsById = async (req, res) => {
 
     // Query the product by ID
     const product = await Product.findById(productId)
-      .populate("category", "name") // Populate category name
-      .populate("subCategory", "name"); // Populate subcategory name
+      .populate("category", "name")
+      .populate("subCategory", "name");
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    return res.status(200).json({ product });
+    // Get a list of available colors
+    const availableColors = product.variants.map((v) => v.color);
+
+    // If color is specified, find the variant for that color
+    let selectedVariant = null;
+    if (color) {
+      selectedVariant = product.variants.find(
+        (v) => v.color.toLowerCase() === color.toLowerCase()
+      );
+
+      if (!selectedVariant) {
+        return res
+          .status(404)
+          .json({ message: "Variant not found for this color" });
+      }
+    } else {
+      // If no color is specified, you can choose to return the first variant
+      selectedVariant = product.variants[0];
+    }
+
+    return res.status(200).json({
+      productId: product._id,
+      productName: product.productName,
+      description: product.description,
+      price: product.price,
+      sku: product.sku,
+      category: product.category,
+      subCategory: product.subCategory,
+      fit: product.fit,
+      material: product.material,
+      fabric: product.fabric,
+      designerRef: product.designerRef,
+      coverImage: product.coverImage,
+      availableColors: availableColors,
+      variant: selectedVariant,
+    });
   } catch (error) {
     console.error("Error fetching product:", error);
     return res.status(500).json({
@@ -417,46 +451,16 @@ exports.getProductsById = async (req, res) => {
 exports.getProductsBySubCategory = async (req, res) => {
   try {
     const { subCategoryId } = req.params;
-    const { minPrice, maxPrice, color, fit, sort } = req.query;
 
     // Validate the subCategoryId format
     if (!mongoose.isValidObjectId(subCategoryId)) {
       return res.status(400).json({ message: "Invalid subCategory ID" });
     }
 
-    // Build the query object dynamically
-    let query = { subCategory: subCategoryId };
-
-    // Apply optional price filters
-    if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = parseFloat(minPrice);
-      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
-    }
-
-    // Apply optional color filter (within variants)
-    if (color) {
-      query["variants.color"] = color;
-    }
-
-    // Apply optional fit filter
-    if (fit) {
-      query.fit = fit;
-    }
-
-    // Build sort query (default is ascending by price)
-    let sortQuery = {};
-    if (sort === "lowToHigh") {
-      sortQuery.price = 1; // Ascending
-    } else if (sort === "highToLow") {
-      sortQuery.price = -1; // Descending
-    }
-
-    // Execute the query with filters and sorting
-    const products = await Product.find(query)
+    // Query the products by subCategoryId
+    const products = await Product.find({ subCategory: subCategoryId })
       .populate("category", "name") // Populate category name
-      .populate("subCategory", "name") // Populate subcategory name
-      .sort(sortQuery); // Apply sorting
+      .populate("subCategory", "name"); // Populate subcategory name
 
     if (products.length === 0) {
       return res
@@ -469,6 +473,61 @@ exports.getProductsBySubCategory = async (req, res) => {
     console.error("Error fetching products by subcategory:", error);
     return res.status(500).json({
       message: "Error fetching products by subcategory",
+      error: error.message,
+    });
+  }
+};
+
+exports.getProductVariantByColor = async (req, res) => {
+  try {
+    const { productId, color } = req.params;
+
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    if (!color) {
+      return res.status(400).json({ message: "Color is required" });
+    }
+
+    // Find the product by ID
+    const product = await Product.findById(productId)
+      .populate("category", "name")
+      .populate("subCategory", "name");
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Find the variant with the specified color
+    const variant = product.variants.find(
+      (v) => v.color.toLowerCase() === color.toLowerCase()
+    );
+
+    if (!variant) {
+      return res
+        .status(404)
+        .json({ message: "Variant not found for this color" });
+    }
+
+    // Return the variant along with the product details
+    return res.status(200).json({
+      productId: product._id,
+      productName: product.productName,
+      description: product.description,
+      category: product.category,
+      subCategory: product.subCategory,
+      fit: product.fit,
+      material: product.material,
+      fabric: product.fabric,
+      designerRef: product.designerRef,
+      coverImage: product.coverImage,
+      variant: variant,
+    });
+  } catch (error) {
+    console.error("Error fetching product variant:", error);
+    return res.status(500).json({
+      message: "Error fetching product variant",
       error: error.message,
     });
   }
