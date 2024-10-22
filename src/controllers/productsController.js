@@ -165,16 +165,25 @@ exports.uploadBulkProducts = async (req, res) => {
 
       // Initialize product if it doesn't already exist
       if (!products[productName]) {
+        let imageList = [];
         let coverImageFirebaseUrl = "";
-        if (row.coverImageUrl) {
-          try {
-            const filename = row.coverImageUrl.split("/").pop();
-            coverImageFirebaseUrl = await uploadImageFromURL(
-              row.coverImageUrl,
-              filename
-            );
-          } catch (error) {
-            console.error(`Failed to upload cover image: ${error.message}`);
+
+        if (row.ImageList) {
+          const imageUrls = row.ImageList.split(",");
+          for (let index = 0; index < imageUrls.length; index++) {
+            const url = imageUrls[index].trim();
+            try {
+              const filename = url.split("/").pop();
+              const firebaseUrl = await uploadImageFromURL(url, filename);
+              imageList.push(firebaseUrl);
+
+              // Set the first image as coverImage
+              if (index === 0) {
+                coverImageFirebaseUrl = firebaseUrl;
+              }
+            } catch (error) {
+              console.error(`Failed to upload image: ${error.message}`);
+            }
           }
         }
 
@@ -203,21 +212,29 @@ exports.uploadBulkProducts = async (req, res) => {
       if (!variant) {
         variant = {
           color: row.color,
-          imageList: [],
+          imageList: [], // We'll fill this below
           sizes: [],
         };
         products[productName].variants.push(variant);
       }
 
-      // Upload images for the variant
-      if (row.imageUrls) {
-        const imageUrls = row.imageUrls.split(",");
-        for (const url of imageUrls) {
+      // Use the imageList from the product for the variant
+      // Assuming all variants share the same images
+      if (row.ImageList) {
+        const imageUrls = row.ImageList.split(",");
+        for (let index = 0; index < imageUrls.length; index++) {
+          const url = imageUrls[index].trim();
           try {
             const filename = url.split("/").pop();
             const firebaseUrl = await uploadImageFromURL(url, filename);
+
             if (!variant.imageList.includes(firebaseUrl)) {
               variant.imageList.push(firebaseUrl); // Avoid duplicates
+            }
+
+            // Set the coverImage if it's the first image
+            if (index === 0 && !products[productName].coverImage) {
+              products[productName].coverImage = firebaseUrl;
             }
           } catch (error) {
             console.error(`Failed to upload image: ${error.message}`);
