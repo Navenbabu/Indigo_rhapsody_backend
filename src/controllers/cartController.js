@@ -178,9 +178,6 @@ exports.addItemToCart = async (req, res) => {
       .json({ message: "Error adding item to cart", error: error.message });
   }
 };
-
-// Update Item Quantity
-// Update Item Quantity
 exports.updateQuantity = async (req, res) => {
   try {
     const { userId, productId, size, color, quantity } = req.body;
@@ -209,13 +206,26 @@ exports.updateQuantity = async (req, res) => {
     if (!productInCart)
       return res.status(404).json({ message: "Product not found in cart" });
 
-    const quantityChange = quantity - productInCart.quantity;
-    if (quantityChange > 0 && sizeVariant.stock < quantityChange) {
-      return res.status(400).json({ message: "Insufficient stock" });
-    }
+    // If quantity is less than 1, remove the item from the cart
+    if (quantity < 1) {
+      cart.products = cart.products.filter(
+        (item) =>
+          !(
+            item.productId.toString() === productId.toString() &&
+            item.size === size &&
+            item.color === color
+          )
+      );
+    } else {
+      const quantityChange = quantity - productInCart.quantity;
+      if (quantityChange > 0 && sizeVariant.stock < quantityChange) {
+        return res.status(400).json({ message: "Insufficient stock" });
+      }
 
-    productInCart.quantity = quantity;
-    sizeVariant.stock -= quantityChange;
+      // Update the quantity in the cart and adjust stock
+      productInCart.quantity = quantity;
+      sizeVariant.stock -= quantityChange;
+    }
 
     await product.save();
 
