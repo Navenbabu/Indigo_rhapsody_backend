@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const videoModel = {
   videoUrl: {
     type: String,
-    required: true,
+    // required: true,
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -30,6 +30,12 @@ const videoModel = {
   is_approved: {
     type: Boolean,
     default: false,
+  },
+  demo_url: {
+    type: String,
+  },
+  instagram_User: {
+    type: String,
   },
 };
 

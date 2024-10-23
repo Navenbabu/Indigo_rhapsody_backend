@@ -12,7 +12,8 @@ const shippingRoutes = require("./src/routes/shippingRoutes.js");
 const designerRoutes = require("./src/routes/designerRoutes.js");
 const bannerRoutes = require("./src/routes/bannerRoutes.js");
 const filterRoutes = require("./src/routes/filterRoutes.js");
-const videoRoutes = require("./src/routes/contentVideoRoutes.js");
+const contentVideoRoutes = require("./src/routes/contentVideoRoutes.js");
+const videoRoutes = require("./src/routes/videoRoutes.js");
 const app = express();
 
 const cors = require("cors");
@@ -42,5 +43,3 @@ app.listen(PORT, () => {
     `Bueno Noches!Hola amigo kaise ho theek ho  Server running on port ${PORT}`
   );
 });
-
-
