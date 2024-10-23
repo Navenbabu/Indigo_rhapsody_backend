@@ -549,3 +549,36 @@ exports.getProductVariantByColor = async (req, res) => {
     });
   }
 };
+
+exports.getProductsByDesigner = async (req, res) => {
+  try {
+    const { designerRef } = req.params;
+
+    // Validate if designerRef is provided
+    if (!designerRef) {
+      return res
+        .status(400)
+        .json({ message: "Designer reference is required" });
+    }
+
+    // Query products by designerRef
+    const products = await Product.find({ designerRef })
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name"); // Populate subcategory name
+
+    // Check if products are found
+    if (!products.length) {
+      return res
+        .status(404)
+        .json({ message: "No products found for this designer" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error fetching products by designer:", error);
+    return res.status(500).json({
+      message: "Error fetching products by designer",
+      error: error.message,
+    });
+  }
+};

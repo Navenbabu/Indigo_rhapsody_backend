@@ -19,4 +19,8 @@ router.get(
   "/products/:productId/variants/:color",
   productController.getProductVariantByColor
 );
+router.get(
+  "/getProductsByDesigner/:designerRef",
+  productController.getProductsByDesigner
+);
 module.exports = router;
