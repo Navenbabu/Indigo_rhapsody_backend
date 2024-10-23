@@ -19,7 +19,7 @@ videoFeature
 
 *New Product Logic
 
-
+cart removal updated
 
 cart features
 
