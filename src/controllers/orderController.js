@@ -352,3 +352,37 @@ exports.updateOrder = async (req, res) => {
     return res.status(500).json({ message: "Error updating order", error });
   }
 };
+
+exports.getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Ensure the orderId is converted to a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid Order ID" });
+    }
+
+    // Find the order by ObjectId
+    const order = await Order.findById(orderId)
+      .populate({
+        path: "products.productId",
+        select: "productName sku",
+      })
+      .populate({
+        path: "userId",
+        select: "name email",
+      });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.status(200).json({ order });
+  } catch (error) {
+    console.error("Error fetching order by ID:", error);
+    return res.status(500).json({
+      message: "Error fetching order",
+      error: error.message,
+    });
+  }
+};
