@@ -11,6 +11,7 @@ coverimage
 
 ##filters for products
 
+product controlle rupdated for getting designer products
 
 color filters
 
