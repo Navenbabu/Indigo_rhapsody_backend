@@ -27,4 +27,6 @@ router.put(
 // Create video (only for approved creators)
 router.post("/videos", videoController.createVideo);
 
+router.post("/video-creator/status", videoController.checkApprovalStatus);
+
 module.exports = router;

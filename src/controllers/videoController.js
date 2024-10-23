@@ -226,3 +226,35 @@ exports.getVideoById = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+// Check video creator approval status by userId
+exports.checkApprovalStatus = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Find the creator's latest request
+    const creatorRequest = await Video.findOne({ userId })
+      .sort({ created_at: -1 }) // Get the latest request
+      .select("is_approved");
+
+    if (!creatorRequest) {
+      return res
+        .status(404)
+        .json({ message: "No request found for this user" });
+    }
+
+    res.status(200).json({
+      message: "Status retrieved successfully",
+      is_approved: creatorRequest.is_approved,
+    });
+  } catch (error) {
+    console.error("Error checking approval status:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
