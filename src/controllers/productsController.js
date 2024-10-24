@@ -468,16 +468,35 @@ exports.getProductsById = async (req, res) => {
 exports.getProductsBySubCategory = async (req, res) => {
   try {
     const { subCategoryId } = req.params;
+    const { fit, color, minPrice, maxPrice, sortBy, sortOrder } = req.query;
 
     // Validate the subCategoryId format
     if (!mongoose.isValidObjectId(subCategoryId)) {
       return res.status(400).json({ message: "Invalid subCategory ID" });
     }
 
-    // Query the products by subCategoryId
-    const products = await Product.find({ subCategory: subCategoryId })
+    // Build the query object with optional filters
+    const query = { subCategory: subCategoryId };
+
+    if (fit) query.fit = fit;
+    if (color) query.color = color;
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = minPrice;
+      if (maxPrice) query.price.$lte = maxPrice;
+    }
+
+    // Determine sorting order (default to ascending if not provided)
+    const sortOptions = {};
+    if (sortBy) {
+      sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
+    }
+
+    // Fetch the products with the applied filters and sorting
+    const products = await Product.find(query)
       .populate("category", "name") // Populate category name
-      .populate("subCategory", "name"); // Populate subcategory name
+      .populate("subCategory", "name") // Populate subcategory name
+      .sort(sortOptions);
 
     if (products.length === 0) {
       return res
