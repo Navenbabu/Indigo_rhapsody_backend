@@ -35,6 +35,7 @@ app.use("/designer", designerRoutes);
 app.use("/banner", bannerRoutes);
 app.use("/filter", filterRoutes);
 app.use("/video", videoRoutes);
+app.use("/content-video", contentVideoRoutes);
 
 const PORT = 5000;
 
