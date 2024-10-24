@@ -478,11 +478,17 @@ exports.getProductsBySubCategory = async (req, res) => {
     // Build the query object with optional filters
     const query = { subCategory: subCategoryId };
 
-    // Handle multiple values for fit and color using the $in operator
-    if (fit) query.fit = { $in: Array.isArray(fit) ? fit : [fit] };
-    if (color) query.color = { $in: Array.isArray(color) ? color : [color] };
+    // Add fit filter only if it has a valid value
+    if (fit && fit.length > 0) {
+      query.fit = { $in: Array.isArray(fit) ? fit : [fit] };
+    }
 
-    // Handle price range filters
+    // Add color filter only if it has a valid value
+    if (color && color.length > 0) {
+      query.color = { $in: Array.isArray(color) ? color : [color] };
+    }
+
+    // Add price filter only if minPrice or maxPrice is provided
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
