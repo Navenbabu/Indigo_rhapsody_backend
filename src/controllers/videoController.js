@@ -262,3 +262,49 @@ exports.checkApprovalStatus = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+exports.createOrUpdateVideo = async (req, res) => {
+  try {
+    const { userId, videoUrl, instagram_User, demo_url } = req.body;
+
+    if (!userId || !videoUrl) {
+      return res
+        .status(400)
+        .json({ message: "User ID and Video URL are required" });
+    }
+
+    // Check if the user already has an approved video entry
+    const existingVideo = await Video.findOne({ userId, is_approved: true });
+
+    if (existingVideo) {
+      // Update existing entry by pushing new video URL
+      existingVideo.videoUrl.push(...videoUrl);
+      existingVideo.updated_at = Date.now();
+      await existingVideo.save();
+
+      return res.status(200).json({
+        message: "Video added successfully",
+        video: existingVideo,
+      });
+    } else {
+      // Create a new video entry for the user
+      const newVideo = new Video({
+        userId,
+        videoUrl,
+        instagram_User,
+        demo_url,
+      });
+
+      await newVideo.save();
+      return res
+        .status(201)
+        .json({ message: "New video created successfully", video: newVideo });
+    }
+  } catch (error) {
+    console.error("Error adding or updating video:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};

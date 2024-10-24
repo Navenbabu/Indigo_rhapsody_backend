@@ -28,5 +28,6 @@ router.put(
 router.post("/videos", videoController.createVideo);
 
 router.post("/video-creator/status", videoController.checkApprovalStatus);
+router.post("/video-creator/upload", videoController.createOrUpdateVideo);
 
 module.exports = router;
