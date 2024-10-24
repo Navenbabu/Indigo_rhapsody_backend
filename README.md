@@ -40,3 +40,11 @@ check status update
 
 
 
+
+if the video creator is approved then only he is allowed to show videos and also on the consumer app
+
+video update feature
+
+
+
+
