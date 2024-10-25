@@ -372,3 +372,101 @@ exports.getCartForUser = async (req, res) => {
     return res.status(500).json({ message: "Error fetching cart", error });
   }
 };
+
+exports.upsertCart = async (req, res) => {
+  try {
+    const {
+      userId,
+      productId,
+      quantity,
+      size,
+      color,
+      is_customizable,
+      customizations,
+    } = req.body;
+
+    let cart = await Cart.findOne({ userId });
+
+    // If the cart doesn't exist, create a new one
+    if (!cart) {
+      cart = new Cart({
+        userId,
+        products: [],
+        subtotal: 0,
+        tax_amount: 0,
+        shipping_cost: 0,
+        total_amount: 0,
+      });
+    }
+
+    // Fetch the product details
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const variant = product.variants.find((v) => v.color === color);
+    if (!variant)
+      return res.status(404).json({ message: "Color variant not found" });
+
+    const sizeVariant = variant.sizes.find((s) => s.size === size);
+    if (!sizeVariant)
+      return res.status(404).json({ message: "Size not found" });
+
+    if (sizeVariant.stock < quantity) {
+      return res.status(400).json({ message: "Insufficient stock" });
+    }
+
+    // Check if the product already exists in the cart
+    const productInCart = cart.products.find(
+      (item) =>
+        item.productId.toString() === productId.toString() &&
+        item.size === size &&
+        item.color === color
+    );
+
+    if (productInCart) {
+      // Update quantity if product already exists in the cart
+      productInCart.quantity += quantity;
+    } else {
+      // Add new product to cart
+      cart.products.push({
+        productId,
+        designerRef: product.designerRef,
+        price: sizeVariant.price,
+        quantity,
+        size,
+        color,
+        is_customizable: is_customizable || false,
+        customizations: customizations || "",
+      });
+    }
+
+    // Reduce stock based on the quantity added
+    sizeVariant.stock -= quantity;
+    await product.save();
+
+    // Recalculate the subtotal
+    let subtotal = 0;
+    cart.products.forEach((item) => {
+      subtotal += item.price * item.quantity;
+    });
+
+    // Calculate tax and shipping
+    const tax_amount = subtotal * 0.12;
+    const shipping_cost = subtotal > 3000 ? 0 : 99;
+
+    // Update the cart totals
+    cart.subtotal = subtotal;
+    cart.tax_amount = tax_amount;
+    cart.shipping_cost = shipping_cost;
+    cart.total_amount = subtotal + tax_amount + shipping_cost;
+
+    await cart.save();
+
+    return res.status(201).json({ message: "Cart updated successfully", cart });
+  } catch (error) {
+    console.error("Error updating cart:", error);
+    return res
+      .status(500)
+      .json({ message: "Error updating cart", error: error.message });
+  }
+};
