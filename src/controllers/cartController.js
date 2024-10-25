@@ -327,7 +327,7 @@ exports.getCartForUser = async (req, res) => {
     // Find the cart and populate necessary fields from the product and variant fields
     const cart = await Cart.findOne({ userId }).populate({
       path: "products.productId",
-      select: "productName price variants is_customizable",
+      select: "productName price variants is_customizable coverImage",
       populate: {
         path: "variants",
         select: "color sizes",
@@ -351,6 +351,7 @@ exports.getCartForUser = async (req, res) => {
           color: variant.color,
           size: item.size,
           is_customizable: product.is_customizable,
+          image: product.coverImage,
         };
       }
 

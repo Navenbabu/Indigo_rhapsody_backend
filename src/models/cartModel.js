@@ -46,6 +46,9 @@ const cartSchema = new mongoose.Schema({
         type: Number,
         default: 0,
       },
+      image: {
+        type: String,
+      },
     },
   ],
   subtotal: {
