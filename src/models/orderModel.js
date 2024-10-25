@@ -28,6 +28,21 @@ const OrderSchema = new mongoose.Schema({
   ],
   products: [
     {
+      returnRequest: {
+        type: Boolean,
+        default: false,
+      },
+      returnId: {
+        type: String,
+      },
+      returnStatus: {
+        type: String,
+        default: "pending",
+      },
+      shipping_status: {
+        type: String,
+        default: "pending",
+      },
       productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Product",

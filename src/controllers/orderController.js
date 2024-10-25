@@ -386,3 +386,101 @@ exports.getOrderById = async (req, res) => {
     });
   }
 };
+
+exports.createReturnRequest = async (req, res) => {
+  try {
+    const { orderId, productId, reason } = req.body;
+
+    // Find the order by ID and ensure it contains the product
+    const order = await Order.findOne({
+      _id: orderId,
+      "products.productId": productId,
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order or Product not found" });
+    }
+
+    // Find the specific product within the order
+    const product = order.products.find(
+      (p) => p.productId.toString() === productId
+    );
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found in the order" });
+    }
+
+    // Mark product for return and update return status
+    product.returnRequest = true;
+    product.returnStatus = "requested";
+    product.returnId = `RET-${Date.now()}`; // Example return ID
+
+    await order.save();
+
+    return res.status(200).json({
+      message: "Return request created successfully",
+      product: {
+        productId: product.productId,
+        productName: product.productName,
+        designerRef: product.designerRef,
+        returnId: product.returnId,
+        returnStatus: product.returnStatus,
+        reason: reason || "Not provided",
+      },
+    });
+  } catch (error) {
+    console.error("Error creating return request:", error);
+    return res.status(500).json({
+      message: "Error creating return request",
+      error: error.message,
+    });
+  }
+};
+
+
+exports.getReturnRequestsByDesigner = async (req, res) => {
+  try {
+    const { designerRef } = req.params;
+
+    // Aggregation to find products with return requests for the given designerRef
+    const returnRequests = await Order.aggregate([
+      { $unwind: "$products" }, // Unwind products to access them individually
+      {
+        $match: {
+          "products.designerRef": designerRef,
+          "products.returnRequest": true,
+        },
+      },
+      {
+        $project: {
+          orderId: 1,
+          "products.productId": 1,
+          "products.productName": 1,
+          "products.quantity": 1,
+          "products.returnId": 1,
+          "products.returnStatus": 1,
+          "products.color": 1,
+          "products.size": 1,
+          createdDate: 1,
+        },
+      },
+    ]);
+
+    if (returnRequests.length === 0) {
+      return res.status(404).json({
+        message: "No return requests found for this designer",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Return requests fetched successfully",
+      returnRequests,
+    });
+  } catch (error) {
+    console.error("Error fetching return requests:", error);
+    return res.status(500).json({
+      message: "Error fetching return requests",
+      error: error.message,
+    });
+  }
+};
