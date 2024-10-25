@@ -386,10 +386,14 @@ exports.getOrderById = async (req, res) => {
     });
   }
 };
-
 exports.createReturnRequest = async (req, res) => {
   try {
     const { orderId, productId, reason } = req.body;
+
+    // Ensure productId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: "Invalid productId format" });
+    }
 
     // Find the order by ID and ensure it contains the product
     const order = await Order.findOne({
@@ -403,11 +407,13 @@ exports.createReturnRequest = async (req, res) => {
 
     // Find the specific product within the order
     const product = order.products.find(
-      (p) => p.productId.toString() === productId
+      (p) => p.productId.toString() === productId.toString()
     );
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found in the order" });
+      return res
+        .status(404)
+        .json({ message: "Product not found in the order" });
     }
 
     // Mark product for return and update return status
@@ -436,7 +442,6 @@ exports.createReturnRequest = async (req, res) => {
     });
   }
 };
-
 
 exports.getReturnRequestsByDesigner = async (req, res) => {
   try {
