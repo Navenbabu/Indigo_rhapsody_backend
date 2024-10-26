@@ -308,3 +308,33 @@ exports.createOrUpdateVideo = async (req, res) => {
     });
   }
 };
+exports.LikeVideo = async (req, res) => {
+  try {
+    const { videoId } = req.params; // Get the video ID from the request parameters
+
+    if (!videoId) {
+      return res.status(400).json({ message: "Video ID is required" });
+    }
+
+    // Find the video by its ID and increment the 'likes' field by 1
+    const likedVideo = await Video.findByIdAndUpdate(
+      videoId,
+      { $inc: { likes: 1 }, updated_at: Date.now() },
+      { new: true }
+    );
+
+    if (!likedVideo) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    res.status(200).json({
+      message: "Video liked successfully",
+      video: likedVideo,
+    });
+  } catch (error) {
+    console.error("Error liking video:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};

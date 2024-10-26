@@ -26,6 +26,7 @@ router.put(
 
 // Create video (only for approved creators)
 router.post("/videos", videoController.createVideo);
+router.post("/:videoId/like", videoController.LikeVideo);
 
 router.post("/video-creator/status", videoController.checkApprovalStatus);
 router.post("/video-creator/upload", videoController.createOrUpdateVideo);

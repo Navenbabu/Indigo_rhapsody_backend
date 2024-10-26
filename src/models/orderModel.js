@@ -79,6 +79,20 @@ const OrderSchema = new mongoose.Schema({
       },
     },
   ],
+  subtotal: {
+    type: Number,
+    default: 0,
+  },
+  tax_amount: {
+    type: Number,
+    default: 0,
+    
+  },
+  shipping_cost: {
+    type: Number,
+    default: 0,
+  },
+
   paymentMethod: {
     type: String,
     required: true,

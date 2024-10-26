@@ -76,22 +76,23 @@ exports.createOrder = async (req, res) => {
   try {
     const { userId, cartId, paymentMethod, notes } = req.body;
 
+    // Validate User
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Prepare Shipping Details
     const shippingDetails = {
       address: {
         street: user.address, // Adjust field names based on your User model
         city: user.city,
         state: user.state,
         pincode: user.pincode,
-        country: user.country || "Default Country", // Provide default if necessary
+        country: user.country || "Default Country",
       },
       phoneNumber: user.phoneNumber,
-      // Include any other necessary fields
     };
 
-    // Find the user's cart and populate product details
+    // Find the cart and populate product details
     const cart = await Cart.findOne({ _id: cartId, userId }).populate(
       "products.productId",
       "productName sku variants designerRef"
@@ -99,45 +100,44 @@ exports.createOrder = async (req, res) => {
 
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
-    // Calculate total amount and prepare order details
-    let totalAmount = 0;
+    // Prepare Order Products
     const orderProducts = cart.products.map((item) => {
       const product = item.productId;
-      const variant = product.variants?.find((v) => v.color === item.color);
-      const sizeVariant = variant?.sizes?.find((s) => s.size === item.size);
-
-      if (!variant || !sizeVariant) {
-        throw new Error(
-          `Variant or size not found for product '${product.productName}'`
-        );
-      }
-
-      const price = sizeVariant.price;
-      totalAmount += price * item.quantity;
-
-      // Prepare the product object for the order, including designerRef
       return {
         productId: product._id,
         productName: product.productName,
-        designerRef: product.designerRef, // Store the designer reference
+        designerRef: product.designerRef,
         quantity: item.quantity,
         size: item.size,
         color: item.color,
         sku: product.sku,
-        price: price,
+        price: item.price,
         discount: item.discount || 0,
       };
     });
 
+    // Extract required fields from the cart
+    const {
+      total_amount,
+      tax_amount,
+      shipping_cost,
+      discount_amount,
+      subtotal,
+    } = cart;
+
     // Create and save the new order
     const order = new Order({
       userId,
-      amount: totalAmount,
+      amount: total_amount,
       cartId: cart._id,
       products: orderProducts,
       paymentMethod,
       shippingDetails,
       notes,
+      tax_amount,
+      shipping_cost,
+      discount_amount,
+      subtotal,
       orderId: `ORD-${Date.now()}`,
     });
 
@@ -147,16 +147,12 @@ exports.createOrder = async (req, res) => {
     cart.products = [];
     await cart.save();
 
-    // Get the user's email address
-
-    if (!user) return res.status(404).json({ message: "User not found" });
-
     const email = user.email;
 
     // Generate and upload the invoice to Firebase
     const firebaseUrl = await generateAndUploadInvoice(order);
 
-    // Send Email with Invoice Link
+    // Send confirmation email with invoice link
     const mailOptions = {
       from: "sveccha.apps@gmail.com",
       to: email,
@@ -174,7 +170,11 @@ exports.createOrder = async (req, res) => {
             )
             .join("")}
         </ul>
-        <p><strong>Total Amount:</strong> $${order.amount}</p>
+        <p><strong>Subtotal:</strong> $${subtotal}</p>
+        <p><strong>Tax:</strong> $${tax_amount}</p>
+        <p><strong>Shipping:</strong> $${shipping_cost}</p>
+        <p><strong>Discount:</strong> -$${discount_amount}</p>
+        <p><strong>Total Amount:</strong> $${total_amount}</p>
         <p>You can download your invoice <a href="${firebaseUrl}">here</a>.</p>
         <p>Thank you for shopping with us!</p>
       `,
@@ -202,6 +202,7 @@ exports.createOrder = async (req, res) => {
       .json({ message: "Error creating order", error: error.message });
   }
 };
+
 // Get Orders by Designer Reference
 exports.getOrdersByDesignerRef = async (req, res) => {
   try {
