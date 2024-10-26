@@ -480,13 +480,13 @@ exports.getProductsBySubCategory = async (req, res) => {
 
     // Handle comma-separated fit values
     if (fit) {
-      const fitArray = fit.split(',').map(f => f.trim());
+      const fitArray = fit.split(",").map((f) => f.trim());
       query.fit = { $in: fitArray };
     }
 
     // Handle comma-separated color values
     if (color) {
-      const colorArray = color.split(',').map(c => c.trim());
+      const colorArray = color.split(",").map((c) => c.trim());
       query.color = { $in: colorArray };
     }
 
@@ -583,6 +583,16 @@ exports.getProductVariantByColor = async (req, res) => {
 exports.getProductsByDesigner = async (req, res) => {
   try {
     const { designerRef } = req.params;
+    const {
+      category,
+      subCategory,
+      color,
+      fit,
+      minPrice,
+      maxPrice,
+      sortBy,
+      order,
+    } = req.query;
 
     // Validate if designerRef is provided
     if (!designerRef) {
@@ -591,12 +601,36 @@ exports.getProductsByDesigner = async (req, res) => {
         .json({ message: "Designer reference is required" });
     }
 
-    // Query products by designerRef
-    const products = await Product.find({ designerRef })
-      .populate("category", "name") // Populate category name
-      .populate("subCategory", "name"); // Populate subcategory name
+    // Build the query object dynamically
+    const query = { designerRef };
 
-    // Check if products are found
+    if (category) query.category = category;
+    if (subCategory) query.subCategory = subCategory;
+    if (color) query.color = color;
+    if (fit) query.fit = fit;
+
+    // Handle optional price range filter
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+    }
+
+    // Create the products query
+    let productsQuery = Product.find(query)
+      .populate("category", "name")
+      .populate("subCategory", "name");
+
+    // Handle optional sorting
+    if (sortBy) {
+      const sortOrder = order === "desc" ? -1 : 1; // Default order is ascending
+      productsQuery = productsQuery.sort({ [sortBy]: sortOrder });
+    }
+
+    // Execute the query
+    const products = await productsQuery;
+
+    // Check if products were found
     if (!products.length) {
       return res
         .status(404)
