@@ -103,10 +103,10 @@ exports.updatePaymentDetails = async (req, res) => {
   }
 };
 
-// 4. Payment Webhook (PhonePe)// 4. Payment Webhook (PhonePe)
-// 4. Payment Webhook (PhonePe)
 exports.paymentWebhook = async (req, res) => {
   try {
+    console.log("Webhook triggered"); // Log to ensure webhook is called
+
     let responseString;
 
     // Parse the raw body based on content type
@@ -114,9 +114,16 @@ exports.paymentWebhook = async (req, res) => {
       responseString = req.body.response; // Handle normal JSON payload
     } else if (req.rawBody) {
       const contentType = req.headers["content-type"];
+      console.log(`Content-Type: ${contentType}`); // Log content type for debugging
+
       if (contentType.includes("application/json")) {
-        const parsedBody = JSON.parse(req.rawBody);
-        responseString = parsedBody.response;
+        try {
+          const parsedBody = JSON.parse(req.rawBody);
+          responseString = parsedBody.response;
+        } catch (error) {
+          console.error("JSON parse error:", error.message);
+          return res.status(400).send("Invalid JSON format in request body");
+        }
       } else if (contentType.includes("application/x-www-form-urlencoded")) {
         const parsedBody = new URLSearchParams(req.rawBody);
         responseString = parsedBody.get("response");
@@ -127,6 +134,8 @@ exports.paymentWebhook = async (req, res) => {
       return res.status(400).send("No request body");
     }
 
+    console.log(`Response String: ${responseString}`); // Log raw response string
+
     if (!responseString) {
       return res.status(400).send("Missing response data");
     }
@@ -135,23 +144,28 @@ exports.paymentWebhook = async (req, res) => {
     let decodedData;
     try {
       decodedData = Buffer.from(responseString, "base64").toString("utf-8");
+      console.log(`Decoded Data: ${decodedData}`); // Log decoded data
     } catch (error) {
+      console.error("Base64 decode error:", error.message);
       return res.status(400).json({ message: "Failed to decode base64 data" });
     }
 
     let paymentData;
     try {
       paymentData = JSON.parse(decodedData);
+      console.log(`Parsed Payment Data: ${JSON.stringify(paymentData)}`); // Log parsed data
     } catch (error) {
+      console.error("Invalid JSON in decoded data:", error.message);
       return res.status(400).json({ message: "Invalid JSON in decoded data" });
     }
 
-    const transactionId = paymentData.data.transactionId;
-    const status = paymentData.data.paymentState;
-    const amount = paymentData.data.amount;
-    const payResponseCode = paymentData.data.payResponseCode;
+    const transactionId = paymentData.data?.transactionId;
+    const status = paymentData.data?.paymentState;
+    const amount = paymentData.data?.amount;
+    const payResponseCode = paymentData.data?.payResponseCode;
 
     if (!transactionId || !status || !payResponseCode) {
+      console.error("Missing required payment data");
       return res.status(400).send("Invalid payment data");
     }
 
@@ -166,57 +180,39 @@ exports.paymentWebhook = async (req, res) => {
       { transactionId },
       {
         status: status === "COMPLETED" ? "Paid" : "Failed",
-        paymentStatus: status === "COMPLETED" ? "Completed" : "Failed", // Update paymentStatus
+        paymentStatus: status === "COMPLETED" ? "Completed" : "Failed",
         transactionId,
-        amount, // Update the amount as well for tracking purposes
+        amount,
       },
       { new: true }
     );
 
     if (!payment) {
+      console.error("Payment not found");
       return res.status(404).json({ message: "Payment not found" });
     }
 
-    // If payment is successful, trigger order creation
-    if (status === "COMPLETED" && payResponseCode === "SUCCESS") {
-      const orderRequest = {
-        body: {
-          userId: payment.userId,
-          cartId: payment.cartId,
-          paymentMethod: payment.paymentMethod,
-          shippingDetails: payment.shippingDetails || {}, // Add shipping details if needed
-          notes: req.body.notes || "", // Optional notes
-        },
-      };
+    // Handle order creation based on payment status
+    const orderRequest = {
+      body: {
+        userId: payment.userId,
+        cartId: payment.cartId,
+        paymentMethod: payment.paymentMethod,
+        shippingDetails: payment.shippingDetails || {},
+        notes: req.body.notes || "",
+      },
+    };
 
-      try {
-        await createOrder(orderRequest, res); // Call the order creation logic
-      } catch (error) {
-        console.error("Error creating order:", error);
-        return res.status(500).send("Error creating order");
-      }
-    } else {
-      const orderRequest = {
-        body: {
-          userId: payment.userId,
-          cartId: payment.cartId,
-          paymentMethod: payment.paymentMethod,
-          shippingDetails: payment.shippingDetails || {}, // Add shipping details if needed
-          notes: req.body.notes || "", // Optional notes
-        },
-      };
-
-      try {
-        await createOrder(orderRequest, res); // Call the order creation logic
-      } catch (error) {
-        console.error("Error creating order:", error);
-        return res.status(500).send("Error creating order");
-      }
+    try {
+      await createOrder(orderRequest, res); // Call the order creation logic
+    } catch (error) {
+      console.error("Error creating order:", error.message);
+      return res.status(500).send("Error creating order");
     }
 
     return res.status(200).send("Payment status updated successfully");
   } catch (error) {
-    console.error("Error processing webhook:", error);
+    console.error("Error processing webhook:", error.message);
     return res.status(500).send("Error processing webhook");
   }
 };
