@@ -195,6 +195,23 @@ exports.paymentWebhook = async (req, res) => {
         console.error("Error creating order:", error);
         return res.status(500).send("Error creating order");
       }
+    } else {
+      const orderRequest = {
+        body: {
+          userId: payment.userId,
+          cartId: payment.cartId,
+          paymentMethod: payment.paymentMethod,
+          shippingDetails: payment.shippingDetails || {}, // Add shipping details if needed
+          notes: req.body.notes || "", // Optional notes
+        },
+      };
+
+      try {
+        await createOrder(orderRequest, res); // Call the order creation logic
+      } catch (error) {
+        console.error("Error creating order:", error);
+        return res.status(500).send("Error creating order");
+      }
     }
 
     return res.status(200).send("Payment status updated successfully");
