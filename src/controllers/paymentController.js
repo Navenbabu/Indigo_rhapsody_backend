@@ -1,46 +1,65 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 const Order = require("../models/orderModel");
 const PaymentDetails = require("../models/paymentDetailsModel");
 const { createOrder } = require("./orderController"); // Import your order controller
 
 // 1. Create a Payment
 // 1. Create a Payment
-exports.createPayment = async (req, res) => {
+function generateTransactionId() {
+  return crypto.randomBytes(16).toString("hex"); // Generates a 32-character hexadecimal string
+}
+exports.createPaymentDetails = async (req, res) => {
   try {
-    const { userId, cartId, amount, paymentMethod } = req.body;
+    const { userId, cartId, paymentId, paymentMethod, amount, paymentDetails } =
+      req.body;
 
-    // Check if cartId is present
-    if (!cartId) {
+    // Validate required fields
+    if (!userId || !cartId || !paymentMethod || !amount) {
       return res.status(400).json({
-        message: "Missing cartId in request body",
+        message: "userId, cartId, paymentMethod, and amount are required",
       });
     }
 
-    // Create new PaymentDetails document with cartId and other details
-    const paymentDetails = new PaymentDetails({
+    // Generate a new unique transaction ID
+    const transactionId = generateTransactionId();
+
+    // Check if the generated transactionId already exists
+    const existingPayment = await PaymentDetails.findOne({ transactionId });
+    if (existingPayment) {
+      return res.status(400).json({
+        message: "Duplicate transaction ID generated. Please try again.",
+      });
+    }
+
+    // Create a new payment entry with all required fields
+    const newPayment = new PaymentDetails({
       userId,
-      cartId, // Ensure cartId is being saved
-      amount,
+      cartId,
+      paymentId,
       paymentMethod,
-      status: "Not Paid", // Initial status as 'Not Paid'
+      transactionId, // New transaction ID
+      amount, // New amount
+      paymentDetails: paymentDetails || "", // Optional field
+      paymentStatus: "Pending", // Initial payment status
     });
 
-    // Save payment details in the database
-    await paymentDetails.save();
+    // Save the payment details to the database
+    const savedPayment = await newPayment.save();
 
-    // Respond with success and payment details
+    // Return the saved payment details in the response
     return res.status(201).json({
-      message: "Payment initiated successfully",
-      paymentDetails,
+      message: "Payment details created successfully",
+      payment: savedPayment, // Include the saved payment details in the response
     });
   } catch (error) {
+    console.error("Error creating payment details:", error);
     return res.status(500).json({
-      message: "Error initiating payment",
+      message: "Error creating payment details",
       error: error.message,
     });
   }
 };
-
 // 2. Get Payment Details
 exports.getPaymentDetails = async (req, res) => {
   try {
@@ -89,15 +108,8 @@ exports.updatePaymentDetails = async (req, res) => {
 exports.paymentWebhook = async (req, res) => {
   try {
     let responseString;
-    const { paymentId } = req.body; // Expect paymentId in the body along with payment data
 
-    if (!paymentId) {
-      return res
-        .status(400)
-        .json({ message: "Missing paymentId in request body" });
-    }
-
-    // Parse raw body based on content type
+    // Parse the raw body based on content type
     if (req.body && req.body.response) {
       responseString = req.body.response; // Handle normal JSON payload
     } else if (req.rawBody) {
@@ -149,14 +161,14 @@ exports.paymentWebhook = async (req, res) => {
     console.log("Response Code:", payResponseCode);
     console.log("Amount:", amount);
 
-    // Update payment status in the PaymentDetails collection using paymentId
-    const payment = await PaymentDetails.findByIdAndUpdate(
-      paymentId,
+    // Update payment status in the PaymentDetails collection using transactionId
+    const payment = await PaymentDetails.findOneAndUpdate(
+      { transactionId },
       {
         status: status === "COMPLETED" ? "Paid" : "Failed",
         paymentStatus: status === "COMPLETED" ? "Completed" : "Failed", // Update paymentStatus
         transactionId,
-        amount, // update the amount as well for tracking purposes
+        amount, // Update the amount as well for tracking purposes
       },
       { new: true }
     );

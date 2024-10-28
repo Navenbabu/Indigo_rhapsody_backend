@@ -10,6 +10,11 @@ const paymentDetailsSchema = new mongoose.Schema({
     type: String,
     // required: true,
   },
+  transactionId: {
+    type: String,
+    unique: true,
+    required: true,
+  },
   cartId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Cart",

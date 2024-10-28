@@ -4,7 +4,7 @@ const cartController = require("../controllers/cartController");
 const orderController = require("../controllers/orderController");
 const paymentController = require("../controllers/paymentController");
 
-router.post("/createPayment", paymentController.createPayment);
+router.post("/createPayment", paymentController.createPaymentDetails);
 router.get(
   "/getPaymentDetails/:paymentId",
   paymentController.getPaymentDetails
