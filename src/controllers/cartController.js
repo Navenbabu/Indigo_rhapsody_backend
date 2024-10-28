@@ -4,6 +4,10 @@ const Product = require("../models/productModels");
 
 // Create or Update Cart
 // Create or Update Cart
+
+function roundToTwoDecimals(value) {
+  return Math.round(value * 100) / 100;
+}
 exports.createCart = async (req, res) => {
   try {
     const { userId, products } = req.body;
@@ -455,10 +459,12 @@ exports.upsertCart = async (req, res) => {
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     // Update the cart totals
-    cart.subtotal = subtotal;
+    cart.subtotal = roundToTwoDecimals(subtotal);
     cart.tax_amount = tax_amount;
     cart.shipping_cost = shipping_cost;
-    cart.total_amount = subtotal + tax_amount + shipping_cost;
+    cart.total_amount = roundToTwoDecimals(
+      subtotal + tax_amount + shipping_cost
+    );
 
     await cart.save();
 

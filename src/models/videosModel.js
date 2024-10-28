@@ -7,6 +7,10 @@ const videoModel = {
       // required: true,
     },
   ],
+  creatorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Video",
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

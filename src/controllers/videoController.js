@@ -164,7 +164,7 @@ exports.getVideosByUser = async (req, res) => {
 
     const videos = await Video.find({ userId }).populate(
       "userId",
-      "displayName email"
+      "displayName email creatorId"
     );
 
     if (!videos.length) {
