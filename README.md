@@ -58,7 +58,7 @@ Product filters
 
 
 video like feature
-
+cart feature updated(round off decimakls)
 
 
 
