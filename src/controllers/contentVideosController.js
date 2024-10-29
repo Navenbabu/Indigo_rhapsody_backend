@@ -122,3 +122,52 @@ exports.deleteVideo = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+exports.toggleLikeVideo = async (req, res) => {
+  try {
+    const { videoId } = req.params; // Get the video ID from the request parameters
+    const { userId } = req.body; // Get the user ID from the request body
+
+    if (!videoId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "Video ID and User ID are required" });
+    }
+
+    // Find the video by ID
+    const video = await ContentVideo.findById(videoId);
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    // Check if the user has already liked the video
+    const userIndex = video.likedBy.indexOf(userId);
+
+    if (userIndex === -1) {
+      // User has not liked the video, so add the like
+      video.likedBy.push(userId);
+      video.no_of_likes += 1;
+    } else {
+      // User has already liked the video, so remove the like
+      video.likedBy.splice(userIndex, 1);
+      video.no_of_likes -= 1;
+    }
+
+    // Save the updated video in the database
+    await video.save();
+
+    res.status(200).json({
+      message:
+        userIndex === -1
+          ? "Video liked successfully"
+          : "Video unliked successfully",
+      video,
+    });
+  } catch (error) {
+    console.error("Error toggling like status:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};

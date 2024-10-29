@@ -27,6 +27,7 @@ const contentVideoSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   is_approved: {
     type: Boolean,
     default: false,
