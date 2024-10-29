@@ -102,7 +102,6 @@ exports.updatePaymentDetails = async (req, res) => {
       .json({ message: "Error updating payment details", error });
   }
 };
-
 exports.paymentWebhook = async (req, res) => {
   try {
     console.log("Webhook triggered");
@@ -139,18 +138,19 @@ exports.paymentWebhook = async (req, res) => {
       merchantTransactionId,
       state,
       amount,
-      paymentInstrument = "Phonepe",
+      paymentInstrument = {},
     } = paymentData.data || {};
-    const paymentMethod = "Phonepe"; // Use "Unknown" if type is not available
+
+    const paymentMethod = paymentInstrument.type || "Phonepe";
 
     if (!merchantTransactionId || !state || !amount) {
       console.error("Missing required payment data");
       return res.status(400).send("Invalid payment data.");
     }
 
-    // Update payment details based on the state
+    // Update payment details using merchantTransactionId (mapped to transactionId)
     const payment = await PaymentDetails.findOneAndUpdate(
-      { merchantTransactionId },
+      { transactionId: merchantTransactionId },
       {
         status: state === "COMPLETED" ? "Paid" : "Failed",
         paymentStatus: state === "COMPLETED" ? "Completed" : "Failed",
@@ -158,10 +158,6 @@ exports.paymentWebhook = async (req, res) => {
         paymentMethod,
       },
       { new: true }
-
-
-
-      
     );
 
     if (!payment) {
@@ -171,44 +167,27 @@ exports.paymentWebhook = async (req, res) => {
 
     console.log("Payment status updated:", payment);
 
-    // Create an order if the payment is successful
-    if (state === "COMPLETED") {
-      const orderRequest = {
-        body: {
-          userId: payment.userId,
-          cartId: payment.cartId,
-          paymentMethod: "Phonepe",
-          shippingDetails: payment.shippingDetails || {},
-          notes: req.body.notes || "",
-        },
-      };
+    // Create an order regardless of payment status (for testing purposes)
+    const orderRequest = {
+      body: {
+        userId: payment.userId,
+        cartId: payment.cartId,
+        paymentMethod: "Phonepe",
+        shippingDetails: payment.shippingDetails || {},
+        notes: req.body.notes || "",
+        paymentStatus: state === "COMPLETED" ? "Completed" : "Failed", // Track the payment status in the order
+      },
+    };
 
-      try {
-        await createOrder(orderRequest, res);
-      } catch (error) {
-        console.error("Error creating order:", error.message);
-        return res.status(500).send("Error creating order.");
-      }
-    } else {
-      const orderRequest = {
-        body: {
-          userId: payment.userId,
-          cartId: payment.cartId,
-          paymentMethod: "Phonepe",
-          shippingDetails: payment.shippingDetails || {},
-          notes: req.body.notes || "",
-        },
-      };
-
-      try {
-        await createOrder(orderRequest, res);
-      } catch (error) {
-        console.error("Error creating order:", error.message);
-        return res.status(500).send("Error creating order.");
-      }
+    try {
+      await createOrder(orderRequest, res);
+      console.log("Order created successfully");
+    } catch (error) {
+      console.error("Error creating order:", error.message);
+      return res.status(500).send("Error creating order.");
     }
 
-    return res.status(200).send("Payment status updated successfully.");
+    return res.status(200).send("Payment status updated and order created.");
   } catch (error) {
     console.error("Error processing webhook:", error.message);
     return res.status(500).send("Error processing webhook.");
