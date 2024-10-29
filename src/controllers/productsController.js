@@ -274,50 +274,63 @@ exports.uploadBulkProducts = async (req, res) => {
 
 exports.getProducts = async (req, res) => {
   try {
-    const { minPrice, maxPrice, sort, color, fit, category, subCategory } =
-      req.query;
+    const {
+      productName, // New filter to search by product name
+      minPrice,
+      maxPrice,
+      sort,
+      color,
+      fit,
+      category,
+      subCategory,
+    } = req.query;
 
     // Construct the query object based on the filters
     let query = {};
 
-    // Filter by price range
+    // 1. Filter by product name (case-insensitive search)
+    if (productName) {
+      query.productName = { $regex: new RegExp(productName, "i") };
+    }
+
+    // 2. Filter by price range
     if (minPrice || maxPrice) {
       query.price = {};
-      if (minPrice) query.price.$gte = parseFloat(minPrice); // Price greater than or equal to minPrice
-      if (maxPrice) query.price.$lte = parseFloat(maxPrice); // Price less than or equal to maxPrice
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
 
-    // Filter by color (inside variants)
+    // 3. Filter by color (inside variants)
     if (color) {
-      query["variants.color"] = color;
+      query["variants.color"] = { $regex: new RegExp(color, "i") };
     }
 
-    // Filter by fit
+    // 4. Filter by fit
     if (fit) {
       query.fit = fit;
     }
 
-    // Filter by category
+    // 5. Filter by category
     if (category) {
       const categoryDoc = await Category.findOne({ name: category });
       if (categoryDoc) {
-        query.category = categoryDoc._id; // Use _id from the category document
+        query.category = categoryDoc._id;
       } else {
         return res.status(404).json({ message: "Category not found" });
       }
     }
 
-    // Filter by subCategory
+    // 6. Filter by subCategory
     if (subCategory) {
       const subCategoryDoc = await SubCategory.findOne({ name: subCategory });
       if (subCategoryDoc) {
-        query.subCategory = subCategoryDoc._id; // Use _id from the subcategory document
+        query.subCategory = subCategoryDoc._id;
       } else {
         return res.status(404).json({ message: "SubCategory not found" });
       }
     }
 
-    // Set up sorting by price (low to high or high to low)
+    // 7. Set up sorting by price (low to high or high to low)
     let sortQuery = {};
     if (sort === "lowToHigh") {
       sortQuery.price = 1; // Ascending
@@ -325,21 +338,25 @@ exports.getProducts = async (req, res) => {
       sortQuery.price = -1; // Descending
     }
 
-    // Execute the query with filters and sorting
+    // 8. Execute the query with filters and sorting
     const products = await Product.find(query)
-      .populate("category", "name") // Populate category name
-      .populate("subCategory", "name") // Populate subCategory name
-      .sort(sortQuery); // Apply sorting if needed
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .sort(sortQuery);
 
+    // 9. Handle case where no products are found
     if (products.length === 0) {
       return res.status(404).json({ message: "No products found" });
     }
 
+    // 10. Return the list of products
     return res.status(200).json({ products });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error fetching products", error: error.message });
+    console.error("Error fetching products:", error.message);
+    return res.status(500).json({
+      message: "Error fetching products",
+      error: error.message,
+    });
   }
 };
 
@@ -351,13 +368,15 @@ exports.searchProducts = async (req, res) => {
       return res.status(400).json({ message: "Search term is required" });
     }
 
-    const regex = new RegExp(searchTerm, "i"); // Case-insensitive partial match
+    const regex = new RegExp(searchTerm, "i"); // Case-insensitive search
 
-    // Find products matching the search term in the product name
+    // Log the query parameters to debug input issues
+    console.log("Search Term:", searchTerm);
+
     const products = await Product.find({ productName: { $regex: regex } })
-      .populate("category", "name") // Populate category name
-      .populate("subCategory", "name") // Populate subCategory name
-      .limit(parseInt(limit) || 10); // Limit the results (default 10)
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .limit(parseInt(limit) || 10);
 
     if (products.length === 0) {
       return res.status(404).json({ message: "No products found" });
@@ -365,7 +384,7 @@ exports.searchProducts = async (req, res) => {
 
     return res.status(200).json({ products });
   } catch (error) {
-    console.error("Error searching products:", error);
+    console.error("Error searching products:", error.message);
     return res.status(500).json({
       message: "Error searching products",
       error: error.message,
@@ -642,6 +661,106 @@ exports.getProductsByDesigner = async (req, res) => {
     console.error("Error fetching products by designer:", error);
     return res.status(500).json({
       message: "Error fetching products by designer",
+      error: error.message,
+    });
+  }
+};
+
+exports.searchProductsAdvanced = async (req, res) => {
+  try {
+    const {
+      searchTerm, // Keyword search for product name
+      category, // Filter by category name
+      subCategory, // Filter by subcategory name
+      minPrice, // Minimum price filter
+      maxPrice, // Maximum price filter
+      color, // Filter by product color
+      fit, // Filter by product fit
+      sortBy, // Sort by field (e.g., price, name)
+      order = "asc", // Order of sorting (asc/desc)
+      page = 1, // Pagination: page number
+      limit = 10, // Pagination: items per page
+    } = req.query;
+
+    // Build dynamic query object
+    let query = {};
+
+    // 1. Search term for product name (case-insensitive)
+    if (searchTerm) {
+      query.productName = { $regex: new RegExp(searchTerm, "i") };
+    }
+
+    // 2. Filter by category (ensure valid ID query)
+    if (category) {
+      const categoryDoc = await Category.findOne({ name: category });
+      if (!categoryDoc) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      query.category = categoryDoc._id.toString(); // Store as a string to prevent ObjectId conflicts
+    }
+
+    // 3. Filter by subcategory
+    if (subCategory) {
+      const subCategoryDoc = await SubCategory.findOne({ name: subCategory });
+      if (!subCategoryDoc) {
+        return res.status(404).json({ message: "Subcategory not found" });
+      }
+      query.subCategory = subCategoryDoc._id.toString();
+    }
+
+    // 4. Filter by price range
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+    }
+
+    // 5. Filter by color within product variants
+    if (color) {
+      query["variants.color"] = { $regex: new RegExp(color, "i") };
+    }
+
+    // 6. Filter by fit
+    if (fit) {
+      query.fit = fit;
+    }
+
+    // 7. Set up sorting (default to ascending order)
+    let sortQuery = {};
+    if (sortBy) {
+      sortQuery[sortBy] = order === "desc" ? -1 : 1;
+    }
+
+    // 8. Calculate pagination values
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // 9. Execute the query with filters, sorting, and pagination
+    const products = await Product.find(query)
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name") // Populate subCategory name
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // 10. Handle case where no products are found
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found" });
+    }
+
+    // 11. Return the list of products with pagination info
+    const totalProducts = await Product.countDocuments(query);
+    return res.status(200).json({
+      products,
+      pagination: {
+        currentPage: parseInt(page),
+        totalProducts,
+        totalPages: Math.ceil(totalProducts / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error searching products:", error.message);
+    return res.status(500).json({
+      message: "Error searching products",
       error: error.message,
     });
   }

@@ -8,7 +8,7 @@ router.post("/", upload.single("file"), productController.uploadBulkProducts);
 
 router.get("/products", productController.getProducts);
 router.get("/products/:productId", productController.getProductsById);
-router.get("/products/search", productController.searchProducts);
+router.get("/products/search", productController.searchProductsAdvanced);
 router.get("/designerSearch", productController.searchProductsByDesigner);
 router.get("/latestProducts", productController.getLatestProducts);
 router.get(
