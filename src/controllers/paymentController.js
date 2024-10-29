@@ -136,21 +136,21 @@ exports.paymentWebhook = async (req, res) => {
 
     // Extract required fields with fallback for missing data
     const {
-      transactionId,
+      merchantTransactionId,
       state,
       amount,
       paymentInstrument = "Phonepe",
     } = paymentData.data || {};
     const paymentMethod = "Phonepe"; // Use "Unknown" if type is not available
 
-    if (!transactionId || !state || !amount) {
+    if (!merchantTransactionId || !state || !amount) {
       console.error("Missing required payment data");
       return res.status(400).send("Invalid payment data.");
     }
 
     // Update payment details based on the state
     const payment = await PaymentDetails.findOneAndUpdate(
-      { transactionId },
+      { merchantTransactionId },
       {
         status: state === "COMPLETED" ? "Paid" : "Failed",
         paymentStatus: state === "COMPLETED" ? "Completed" : "Failed",
@@ -158,6 +158,10 @@ exports.paymentWebhook = async (req, res) => {
         paymentMethod,
       },
       { new: true }
+
+
+
+      
     );
 
     if (!payment) {
