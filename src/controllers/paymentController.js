@@ -106,14 +106,12 @@ exports.paymentWebhook = async (req, res) => {
   try {
     console.log("Webhook triggered");
 
-    // Parse raw request body or JSON content
     let responseString = req.body.response || req.rawBody;
 
     if (!responseString) {
       return res.status(400).send("Missing payment response data.");
     }
 
-    // Decode base64-encoded response
     let decodedData;
     try {
       decodedData = Buffer.from(responseString, "base64").toString("utf-8");
@@ -168,24 +166,6 @@ exports.paymentWebhook = async (req, res) => {
     console.log("Payment status updated:", payment);
 
     // Create an order regardless of payment status (for testing purposes)
-    const orderRequest = {
-      body: {
-        userId: payment.userId,
-        cartId: payment.cartId,
-        paymentMethod: "Phonepe",
-        shippingDetails: payment.shippingDetails || {},
-        notes: req.body.notes || "",
-        paymentStatus: state === "COMPLETED" ? "Completed" : "Failed", // Track the payment status in the order
-      },
-    };
-
-    try {
-      await createOrder(orderRequest, res);
-      console.log("Order created successfully");
-    } catch (error) {
-      console.error("Error creating order:", error.message);
-      return res.status(500).send("Error creating order.");
-    }
 
     return res.status(200).send("Payment status updated and order created.");
   } catch (error) {
