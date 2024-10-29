@@ -6,6 +6,11 @@ const contentVideoSchema = new mongoose.Schema({
     ref: "User",
     // required: true,
   },
+  comments: [
+    {
+      type: String,
+    },
+  ],
   creatorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Video",

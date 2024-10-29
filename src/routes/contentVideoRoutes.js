@@ -8,6 +8,7 @@ router.get("/videos/user/:userId", videoController.getVideosByUser);
 router.get("/videos/:videoId", videoController.getVideoById);
 router.delete("/videos/:videoId", videoController.deleteVideo);
 router.post("/videos/:videoId/like", videoController.toggleLikeVideo);
-
+router.post("/comments", videoController.createComment); // Create a comment
+router.get("/videos/:videoId/comments", videoController.getCommentsByVideo);
 
 module.exports = router;

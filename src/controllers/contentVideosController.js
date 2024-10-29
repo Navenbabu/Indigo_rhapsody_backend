@@ -1,4 +1,5 @@
 const ContentVideo = require("../models/contentVIdeosModel");
+const Comment = require("../models/commentModel");
 
 // Create a new video
 exports.createVideo = async (req, res) => {
@@ -169,5 +170,60 @@ exports.toggleLikeVideo = async (req, res) => {
     res
       .status(500)
       .json({ message: "Internal Server Error:", error: error.message });
+  }
+};
+
+exports.createComment = async (req, res) => {
+  try {
+    const { videoId, userId, commentText } = req.body;
+
+    if (!videoId || !userId || !commentText) {
+      return res
+        .status(400)
+        .json({ message: "Video ID, User ID, and comment text are required." });
+    }
+
+    const newComment = new Comment({
+      videoId,
+      userId,
+      commentText,
+    });
+
+    await newComment.save();
+
+    res.status(201).json({
+      message: "Comment added successfully",
+      comment: newComment,
+    });
+  } catch (error) {
+    console.error("Error creating comment:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getCommentsByVideo = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+
+    const comments = await Comment.find({ videoId })
+      .populate("userId", "displayName email") // Populate user details
+      .sort({ createdAt: -1 }); // Sort by most recent first
+
+    if (!comments.length) {
+      return res
+        .status(404)
+        .json({ message: "No comments found for this video." });
+    }
+
+    res.status(200).json({ comments });
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
   }
 };
