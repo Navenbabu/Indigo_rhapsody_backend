@@ -30,5 +30,6 @@ router.post("/:videoId/like", videoController.LikeVideo);
 
 router.post("/video-creator/status", videoController.checkApprovalStatus);
 router.post("/video-creator/upload", videoController.createOrUpdateVideo);
+router.post("/videos/:videoId/like", videoController.toggleLikeVideo);
 
 module.exports = router;

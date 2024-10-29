@@ -24,6 +24,7 @@ const videoModel = {
     type: Date,
     default: Date.now,
   },
+  likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   comments: [
     {
       type: String,
