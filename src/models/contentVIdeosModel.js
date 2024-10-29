@@ -4,16 +4,16 @@ const contentVideoSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
+    // required: true,
   },
   creatorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Video",
-    required: true,
+    // required: true,
   },
   videoUrl: {
     type: String,
-    required: true,
+    // required: true,
   },
   createdDate: {
     type: Date,
