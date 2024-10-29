@@ -168,6 +168,6 @@ exports.toggleLikeVideo = async (req, res) => {
     console.error("Error toggling like status:", error);
     res
       .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+      .json({ message: "Internal Server Error:", error: error.message });
   }
 };
