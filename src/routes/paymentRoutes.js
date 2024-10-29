@@ -9,6 +9,7 @@ router.get(
   "/getPaymentDetails/:paymentId",
   paymentController.getPaymentDetails
 );
+router.get("/transaction/:transactionId", getPaymentDetailsByTransactionId);
 router.put(
   "/updatePaymentDetails/:paymentId",
   paymentController.updatePaymentDetails

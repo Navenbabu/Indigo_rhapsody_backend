@@ -77,6 +77,27 @@ exports.getPaymentDetails = async (req, res) => {
   }
 };
 
+exports.getPaymentDetailsByTransactionId = async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+
+    // Query the PaymentDetails collection using transactionId
+    const paymentDetails = await PaymentDetails.findOne({ transactionId });
+
+    if (!paymentDetails) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    return res.status(200).json({ paymentDetails });
+  } catch (error) {
+    console.error("Error fetching payment details:", error.message);
+    return res.status(500).json({
+      message: "Error fetching payment details",
+      error: error.message,
+    });
+  }
+};
+
 // 3. Update Payment Details
 exports.updatePaymentDetails = async (req, res) => {
   try {
