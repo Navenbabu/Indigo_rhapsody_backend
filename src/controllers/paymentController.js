@@ -134,9 +134,15 @@ exports.paymentWebhook = async (req, res) => {
       return res.status(400).json({ message: "Invalid JSON in decoded data." });
     }
 
-    // Extract required fields from PhonePe response
-    const { transactionId, state, amount, paymentInstrument } =
-      paymentData.data;
+    // Extract required fields with fallback for missing data
+    const {
+      transactionId,
+      state,
+      amount,
+      paymentInstrument = {},
+    } = paymentData.data || {};
+    const paymentMethod = paymentInstrument.type || "Unknown"; // Use "Unknown" if type is not available
+
     if (!transactionId || !state || !amount) {
       console.error("Missing required payment data");
       return res.status(400).send("Invalid payment data.");
@@ -149,7 +155,7 @@ exports.paymentWebhook = async (req, res) => {
         status: state === "COMPLETED" ? "Paid" : "Failed",
         paymentStatus: state === "COMPLETED" ? "Completed" : "Failed",
         amount,
-        paymentMethod: paymentInstrument.type || "Unknown",
+        paymentMethod,
       },
       { new: true }
     );
