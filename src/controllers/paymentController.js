@@ -139,9 +139,9 @@ exports.paymentWebhook = async (req, res) => {
       transactionId,
       state,
       amount,
-      paymentInstrument = {},
+      paymentInstrument = "Phonepe",
     } = paymentData.data || {};
-    const paymentMethod = paymentInstrument.type || "Unknown"; // Use "Unknown" if type is not available
+    const paymentMethod = "Phonepe"; // Use "Unknown" if type is not available
 
     if (!transactionId || !state || !amount) {
       console.error("Missing required payment data");
@@ -173,7 +173,7 @@ exports.paymentWebhook = async (req, res) => {
         body: {
           userId: payment.userId,
           cartId: payment.cartId,
-          paymentMethod: payment.paymentMethod,
+          paymentMethod: "Phonepe",
           shippingDetails: payment.shippingDetails || {},
           notes: req.body.notes || "",
         },
@@ -190,7 +190,7 @@ exports.paymentWebhook = async (req, res) => {
         body: {
           userId: payment.userId,
           cartId: payment.cartId,
-          paymentMethod: payment.paymentMethod,
+          paymentMethod: "Phonepe",
           shippingDetails: payment.shippingDetails || {},
           notes: req.body.notes || "",
         },
