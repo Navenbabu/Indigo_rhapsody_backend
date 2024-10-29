@@ -141,7 +141,7 @@ exports.paymentWebhook = async (req, res) => {
       paymentInstrument = {},
     } = paymentData.data || {};
 
-    const paymentMethod = paymentInstrument.type || "Phonepe";
+    const paymentMethod = "Phonepe";
 
     if (!merchantTransactionId || !state || !amount) {
       console.error("Missing required payment data");
