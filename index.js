@@ -15,6 +15,7 @@ const filterRoutes = require("./src/routes/filterRoutes.js");
 const contentVideoRoutes = require("./src/routes/contentVideoRoutes.js");
 const videoRoutes = require("./src/routes/videoRoutes.js");
 const coupons = require("./src/routes/couponRoutes.js");
+const wishlist = require("./src/routes/wishlistRoutes.js");
 const app = express();
 
 const cors = require("cors");
@@ -38,6 +39,7 @@ app.use("/filter", filterRoutes);
 app.use("/video", videoRoutes);
 app.use("/content-video", contentVideoRoutes);
 app.use("/coupon", coupons);
+app.use("/wishlist", wishlist);
 
 const PORT = 5000;
 
