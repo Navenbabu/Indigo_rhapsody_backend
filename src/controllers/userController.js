@@ -2,7 +2,8 @@ const User = require("../models/userModel");
 const Designer = require("../models/designerModel");
 const { bucket } = require("../service/firebaseServices");
 const { admin } = require("../service/firebaseServices");
-
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 // Create a new user
 exports.createUser = async (req, res) => {
@@ -214,6 +215,51 @@ exports.createUserAndDesigner = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.error("Error creating user and designer:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.loginDesigner = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Step 1: Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Step 2: Check if the user's role is "Designer"
+    if (user.role !== "Designer") {
+      return res.status(403).json({ message: "Access denied. Not a designer" });
+    }
+
+    // Step 3: Validate the password (plain text comparison)
+    if (password !== user.password) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Step 4: Find the associated designer record
+    const designer = await Designer.findOne({ userId: user._id });
+    if (!designer) {
+      return res.status(404).json({ message: "Designer profile not found" });
+    }
+
+    // Step 5: Generate a token (optional)
+  
+
+    // Step 6: Return userId, designerId, and token
+    res.status(200).json({
+      message: "Login successful",
+      userId: user._id,
+      designerId: designer._id,
+   
+    });
+  } catch (error) {
+    console.error("Error during login:", error);
     res.status(500).json({
       message: "Internal Server Error",
       error: error.message,
