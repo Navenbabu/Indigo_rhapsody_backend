@@ -12,6 +12,7 @@ router.get("/products/:productId", productController.getProductsById);
 router.get("/products/search", productController.searchProductsAdvanced);
 router.get("/designerSearch", productController.searchProductsByDesigner);
 router.get("/latestProducts", productController.getLatestProducts);
+router.put("/products/:id", productController.updateProduct);
 router.get(
   "/subCategory/:subCategoryId",
   productController.getProductsBySubCategory
