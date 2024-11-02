@@ -218,8 +218,13 @@ exports.uploadSingleProduct = async (req, res) => {
 exports.uploadBulkProducts = async (req, res) => {
   try {
     const file = req.file; // Multer handles file upload
+    const { designerRef } = req.body; // Extract designerRef from form data
 
     if (!file) return res.status(400).json({ message: "No file uploaded" });
+    if (!designerRef)
+      return res
+        .status(400)
+        .json({ message: "Designer reference is required" });
 
     // Read the Excel file from buffer
     const workbook = xlsx.read(file.buffer, { type: "buffer" });
@@ -278,7 +283,7 @@ exports.uploadBulkProducts = async (req, res) => {
           material: row.material,
           category: categoryDoc._id,
           subCategory: subCategoryDoc._id,
-          designerRef: row.designerRef,
+          designerRef: designerRef, // Use designerRef from form data
           createdDate: new Date(),
           coverImage: coverImageFirebaseUrl,
           variants: [],
