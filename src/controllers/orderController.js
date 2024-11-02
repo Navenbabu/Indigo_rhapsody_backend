@@ -490,3 +490,152 @@ exports.getReturnRequestsByDesigner = async (req, res) => {
     });
   }
 };
+
+// Endpoint to get total orders by designers
+exports.getTotalOrdersByDesigners = async (req, res) => {
+  try {
+    // Aggregate orders to count total number of orders per designer
+    const totalOrdersByDesigner = await Order.aggregate([
+      { $unwind: "$products" }, // Unwind products to group by designerRef
+      {
+        $group: {
+          _id: "$products.designerRef",
+          totalOrders: { $sum: 1 }, // Count each order
+        },
+      },
+      {
+        $lookup: {
+          from: "designers", // Adjust the name if your designer collection is different
+          localField: "_id",
+          foreignField: "_id",
+          as: "designerDetails",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          designerRef: "$_id",
+          totalOrders: 1,
+          designerDetails: { $arrayElemAt: ["$designerDetails", 0] }, // Get the first (and only) element
+        },
+      },
+    ]);
+
+    if (totalOrdersByDesigner.length === 0) {
+      return res.status(404).json({ message: "No orders found for designers" });
+    }
+
+    return res.status(200).json({ totalOrdersByDesigner });
+  } catch (error) {
+    console.error("Error fetching total orders by designers:", error);
+    return res.status(500).json({
+      message: "Error fetching total orders by designers",
+      error: error.message,
+    });
+  }
+};
+
+// Endpoint to get total sales (total amount of all orders)
+exports.getTotalSales = async (req, res) => {
+  try {
+    // Aggregate to calculate the total sales amount
+    const totalSales = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalSalesAmount: { $sum: "$amount" }, // Sum the total amount of each order
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalSalesAmount: 1,
+        },
+      },
+    ]);
+
+    if (totalSales.length === 0) {
+      return res.status(404).json({ message: "No sales data found" });
+    }
+
+    return res.status(200).json({ totalSales: totalSales[0].totalSalesAmount });
+  } catch (error) {
+    console.error("Error fetching total sales amount:", error);
+    return res.status(500).json({
+      message: "Error fetching total sales amount",
+      error: error.message,
+    });
+  }
+};
+
+// Endpoint to get total orders for a particular designer by ID
+exports.getTotalOrdersForDesigner = async (req, res) => {
+  try {
+    const { designerId } = req.params; // Get the designer ID from the request parameters
+
+    // Aggregate to count the total number of orders per designer
+    const totalOrders = await Order.aggregate([
+      { $unwind: "$products" }, // Unwind products to group by designerRef
+      { $match: { "products.designerRef": designerId } }, // Match the specific designer ID
+      {
+        $group: {
+          _id: "$products.designerRef",
+          totalOrders: { $sum: 1 }, // Count each order that includes the designer's products
+        },
+      },
+    ]);
+
+    if (totalOrders.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No orders found for this designer" });
+    }
+
+    return res
+      .status(200)
+      .json({ designerId, totalOrders: totalOrders[0].totalOrders });
+  } catch (error) {
+    console.error("Error fetching total orders for designer:", error);
+    return res.status(500).json({
+      message: "Error fetching total orders for designer",
+      error: error.message,
+    });
+  }
+};
+
+// Endpoint to get total sales for a particular designer by ID
+exports.getTotalSalesForDesigner = async (req, res) => {
+  try {
+    const { designerId } = req.params; // Get the designer ID from the request parameters
+
+    // Aggregate to calculate the total sales amount for a specific designer
+    const totalSales = await Order.aggregate([
+      { $unwind: "$products" }, // Unwind products to group by designerRef
+      { $match: { "products.designerRef": designerId } }, // Match the specific designer ID
+      {
+        $group: {
+          _id: "$products.designerRef",
+          totalSalesAmount: {
+            $sum: { $multiply: ["$products.price", "$products.quantity"] },
+          }, // Calculate the total sales amount
+        },
+      },
+    ]);
+
+    if (totalSales.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No sales data found for this designer" });
+    }
+
+    return res
+      .status(200)
+      .json({ designerId, totalSalesAmount: totalSales[0].totalSalesAmount });
+  } catch (error) {
+    console.error("Error fetching total sales for designer:", error);
+    return res.status(500).json({
+      message: "Error fetching total sales for designer",
+      error: error.message,
+    });
+  }
+};
