@@ -323,21 +323,14 @@ exports.updateProduct = async (req, res) => {
     }
 
     // Update the product with the provided fields
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { new: true }
-    );
+    const updatedProduct = await Product.findByIdAndUpdate(id, { $set: updateData }, { new: true });
 
-    return res
-      .status(200)
-      .json({ message: "Product updated successfully", updatedProduct });
+    return res.status(200).json({ message: "Product updated successfully", updatedProduct });
   } catch (error) {
     console.error("Error updating product:", error.message);
-    return res
-      .status(500)
-      .json({ message: "Failed to update product", error: error.message });
+    return res.status(500).json({ message: "Failed to update product", error: error.message });
   }
 };
+
 
 export default ProductsTable;
