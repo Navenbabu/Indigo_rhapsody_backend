@@ -23,4 +23,9 @@ router.get(
   "/getProductsByDesigner/:designerRef",
   productController.getProductsByDesigner
 );
+
+router.get(
+  "/total-products/designer/:designerId",
+  productController.getTotalProductsByDesigner
+);
 module.exports = router;
