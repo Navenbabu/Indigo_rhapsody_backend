@@ -1,315 +1,882 @@
-import React, { useEffect, useState } from "react";
-import { getProductsBydesigner } from "../../service/productsService";
-import { RecentOrderWrap } from "../recentOrders/RecentOrderTable.styles";
-import styled from "styled-components";
+const mongoose = require("mongoose");
+const Product = require("../models/productModels");
+const Category = require("../models/categoryModel");
+const SubCategory = require("../models/subcategoryModel");
+const { bucket } = require("../service/firebaseServices"); // Firebase storage configuration
+const axios = require("axios"); // To fetch images from URLs
+const xlsx = require("xlsx"); // Add this at the top of your file
 
-const Dialog = styled.div`
-  display: ${(props) => (props.show ? "block" : "none")};
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  max-width: 800px;
-  width: 100%;
-  overflow-y: auto;
-  max-height: 90vh;
-`;
+const uploadImageFromURL = async (imageUrl, filename) => {
+  try {
+    const response = await axios({
+      url: imageUrl,
+      responseType: "stream", // Fetch the image as a stream
+    });
 
-const Overlay = styled.div`
-  display: ${(props) => (props.show ? "block" : "none")};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-`;
+    const blob = bucket.file(`products/${Date.now()}_${filename}`);
+    const blobStream = blob.createWriteStream({
+      metadata: {
+        contentType: response.headers["content-type"],
+      },
+    });
 
-const FormSection = styled.div`
-  margin-bottom: 20px;
+    // Pipe the image stream to Firebase Storage
+    response.data.pipe(blobStream);
 
-  h4 {
-    margin-bottom: 10px;
-    font-size: 18px;
-    color: #333;
+    return new Promise((resolve, reject) => {
+      blobStream.on("finish", async () => {
+        const firebaseUrl = await blob.getSignedUrl({
+          action: "read",
+          expires: "03-09-2491",
+        });
+        resolve(firebaseUrl[0]);
+      });
+
+      blobStream.on("error", (error) => reject(error));
+    });
+  } catch (error) {
+    throw new Error(`Failed to upload image from URL: ${error.message}`);
   }
+};
+exports.createProduct = async (req, res) => {
+  try {
+    const {
+      productName,
+      category,
+      subCategory,
+      description,
+      price,
+      sku,
+      fit,
+      fabric,
+      material,
+      imageUrls,
+      designerRef,
+      variants, // Array of variant objects: { color, sizes: [{ size, price, stock }] }
+    } = req.body;
 
-  label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 5px;
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-
-    &:focus {
-      outline: none;
-      border-color: #007bff;
+    // Check if required fields are present
+    if (!productName || !category || !price || !designerRef) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
+
+    // Find or create category
+    const categoryDoc = await Category.findOneAndUpdate(
+      { name: category },
+      { name: category },
+      { upsert: true, new: true }
+    );
+
+    // Find or create subcategory
+    const subCategoryDoc = await SubCategory.findOneAndUpdate(
+      { name: subCategory },
+      { name: subCategory, category: categoryDoc._id },
+      { upsert: true, new: true }
+    );
+
+    // Upload images and create image URLs
+    let imageList = [];
+    for (const url of imageUrls) {
+      const filename = url.split("/").pop();
+      const firebaseUrl = await uploadImageFromURL(url, filename);
+      imageList.push(firebaseUrl);
+    }
+
+    // Create product
+    const product = new Product({
+      productName,
+      category: categoryDoc._id,
+      subCategory: subCategoryDoc ? subCategoryDoc._id : null,
+      description,
+      price,
+      sku,
+      fit,
+      fabric,
+      material,
+      imageList,
+      coverImage: imageList[0] || null,
+      designerRef,
+      createdDate: new Date(),
+      variants: variants.map((variant) => ({
+        color: variant.color,
+        sizes: variant.sizes.map((size) => ({
+          size: size.size,
+          price: size.price,
+          stock: size.stock,
+        })),
+      })),
+    });
+
+    // Save product to the database
+    await product.save();
+
+    res.status(201).json({ message: "Product created successfully", product });
+  } catch (error) {
+    console.error("Error creating product:", error.message);
+    res.status(500).json({
+      message: "Error creating product",
+      error: error.message,
+    });
   }
+};
 
-  textarea {
-    resize: vertical;
+exports.searchProductsByDesigner = async (req, res) => {
+  try {
+    const { designerRef, searchTerm, limit } = req.query;
+
+    if (!designerRef) {
+      return res
+        .status(400)
+        .json({ message: "Designer reference is required" });
+    }
+
+    const query = { designerRef };
+
+    // Add search term if provided
+    if (searchTerm) {
+      const regex = new RegExp(searchTerm, "i"); // Case-insensitive partial match
+      query.productName = { $regex: regex }; // Match product name based on searchTerm
+    }
+
+    // Limit the number of results, defaulting to 10
+    const productLimit = parseInt(limit) || 10;
+
+    // Query the products based on designerRef and optional searchTerm
+    const products = await Product.find(query)
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name") // Populate subCategory name
+      .limit(productLimit);
+
+    if (products.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No products found for this designer" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error searching products by designer:", error);
+    return res.status(500).json({
+      message: "Error searching products by designer",
+      error: error.message,
+    });
   }
+};
 
-  .variant-container {
-    margin-bottom: 20px;
+exports.uploadSingleProduct = async (req, res) => {
+  try {
+    const {
+      category,
+      subCategory,
+      productName,
+      price,
+      sku,
+      fit,
+      description,
+      imageUrls,
+    } = req.body;
+
+    // Find or create Category and Subcategory
+    const categoryDoc = await Category.findOneAndUpdate(
+      { name: category },
+      { name: category },
+      { upsert: true, new: true }
+    );
+    const subCategoryDoc = await SubCategory.findOneAndUpdate(
+      { name: subCategory },
+      { name: subCategory, category: categoryDoc._id },
+      { upsert: true, new: true }
+    );
+
+    let imageList = [];
+    for (const url of imageUrls) {
+      const filename = url.split("/").pop(); // Get the filename from the URL
+      const firebaseUrl = await uploadImageFromURL(url, filename);
+      imageList.push(firebaseUrl);
+    }
+
+    const product = new Product({
+      productName,
+      price,
+      sku,
+      description,
+      category: categoryDoc._id,
+      subCategory: subCategoryDoc._id,
+      fit,
+      imageList,
+    });
+
+    await product.save();
+    return res
+      .status(201)
+      .json({ message: "Product created successfully", product });
+  } catch (error) {
+    return res.status(500).json({ message: "Error creating product", error });
   }
+};
 
-  .variant-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
+exports.uploadBulkProducts = async (req, res) => {
+  try {
+    const file = req.file; // Multer handles file upload
+    const { designerRef } = req.body; // Extract designerRef from form data
 
-    input {
-      flex: 1;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      margin-bottom: 5px;
+    if (!file) return res.status(400).json({ message: "No file uploaded" });
+    if (!designerRef)
+      return res
+        .status(400)
+        .json({ message: "Designer reference is required" });
 
-      &:focus {
-        border-color: #007bff;
+    // Read the Excel file from buffer
+    const workbook = xlsx.read(file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    const products = {};
+
+    // Iterate through each row in Excel
+    for (const row of sheetData) {
+      const categoryDoc = await Category.findOneAndUpdate(
+        { name: row.category },
+        { name: row.category },
+        { upsert: true, new: true }
+      );
+
+      const subCategoryDoc = await SubCategory.findOneAndUpdate(
+        { name: row.subCategory },
+        { name: row.subCategory, category: categoryDoc._id },
+        { upsert: true, new: true }
+      );
+
+      const productName = row.productName.trim().toLowerCase();
+
+      // Initialize product if it doesn't already exist
+      if (!products[productName]) {
+        let imageList = [];
+        let coverImageFirebaseUrl = "";
+
+        if (row.ImageList) {
+          const imageUrls = row.ImageList.split(",");
+          for (let index = 0; index < imageUrls.length; index++) {
+            const url = imageUrls[index].trim();
+            try {
+              const filename = url.split("/").pop();
+              const firebaseUrl = await uploadImageFromURL(url, filename);
+              imageList.push(firebaseUrl);
+
+              // Set the first image as coverImage
+              if (index === 0) {
+                coverImageFirebaseUrl = firebaseUrl;
+              }
+            } catch (error) {
+              console.error(`Failed to upload image: ${error.message}`);
+            }
+          }
+        }
+
+        products[productName] = {
+          productName: row.productName,
+          description: row.description,
+          price: row.price,
+          sku: row.sku,
+          fit: row.fit,
+          fabric: row.fabric,
+          material: row.material,
+          category: categoryDoc._id,
+          subCategory: subCategoryDoc._id,
+          designerRef: designerRef, // Use designerRef from form data
+          createdDate: new Date(),
+          coverImage: coverImageFirebaseUrl,
+          variants: [],
+        };
+      }
+
+      // Handle product variant
+      let variant = products[productName].variants.find(
+        (v) => v.color === row.color
+      );
+
+      if (!variant) {
+        variant = {
+          color: row.color,
+          imageList: [], // We'll fill this below
+          sizes: [],
+        };
+        products[productName].variants.push(variant);
+      }
+
+      // Use the imageList from the product for the variant
+      // Assuming all variants share the same images
+      if (row.ImageList) {
+        const imageUrls = row.ImageList.split(",");
+        for (let index = 0; index < imageUrls.length; index++) {
+          const url = imageUrls[index].trim();
+          try {
+            const filename = url.split("/").pop();
+            const firebaseUrl = await uploadImageFromURL(url, filename);
+
+            if (!variant.imageList.includes(firebaseUrl)) {
+              variant.imageList.push(firebaseUrl); // Avoid duplicates
+            }
+
+            // Set the coverImage if it's the first image
+            if (index === 0 && !products[productName].coverImage) {
+              products[productName].coverImage = firebaseUrl;
+            }
+          } catch (error) {
+            console.error(`Failed to upload image: ${error.message}`);
+          }
+        }
+      }
+
+      // Add size to the variant
+      if (!variant.sizes.find((size) => size.size === row.size)) {
+        variant.sizes.push({
+          size: row.size,
+          price: row.sizePrice || row.price, // Handle size-specific price
+          stock: row.sizeStock || row.stock || 0, // Handle size-specific stock
+        });
       }
     }
 
-    .add-size-button {
-      background-color: #28a745;
-      color: white;
-      padding: 8px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
+    // Upsert (create or update) products in the database
+    for (const productName in products) {
+      const productData = products[productName];
+      await Product.findOneAndUpdate(
+        { productName: productData.productName },
+        { $set: productData },
+        { upsert: true, new: true }
+      );
     }
+
+    return res.status(201).json({ message: "Products uploaded successfully" });
+  } catch (error) {
+    console.error("Error uploading products:", error.message);
+    return res.status(500).json({
+      message: "Error uploading products",
+      error: error.message,
+    });
   }
-`;
+};
 
-const ButtonGroup = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+exports.getProducts = async (req, res) => {
+  try {
+    const {
+      productName, // New filter to search by product name
+      minPrice,
+      maxPrice,
+      sort,
+      color,
+      fit,
+      category,
+      subCategory,
+    } = req.query;
 
-  button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+    // Construct the query object based on the filters
+    let query = {};
 
-    &.cancel {
-      background-color: #f0f0f0;
-      color: #333;
+    // 1. Filter by product name (case-insensitive search)
+    if (productName) {
+      query.productName = { $regex: new RegExp(productName, "i") };
     }
 
-    &.continue {
-      background-color: #007bff;
-      color: #fff;
+    // 2. Filter by price range
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
-  }
-`;
 
-function ProductsTable() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [showDialog, setShowDialog] = useState(false);
+    // 3. Filter by color (inside variants)
+    if (color) {
+      query["variants.color"] = { $regex: new RegExp(color, "i") };
+    }
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await getProductsBydesigner();
-        setProducts(data.products);
-        setLoading(false);
-      } catch (error) {
-        setError(error.message);
-        setLoading(false);
+    // 4. Filter by fit
+    if (fit) {
+      query.fit = fit;
+    }
+
+    // 5. Filter by category
+    if (category) {
+      const categoryDoc = await Category.findOne({ name: category });
+      if (categoryDoc) {
+        query.category = categoryDoc._id;
+      } else {
+        return res.status(404).json({ message: "Category not found" });
       }
-    };
+    }
 
-    fetchProducts();
-  }, []);
+    // 6. Filter by subCategory
+    if (subCategory) {
+      const subCategoryDoc = await SubCategory.findOne({ name: subCategory });
+      if (subCategoryDoc) {
+        query.subCategory = subCategoryDoc._id;
+      } else {
+        return res.status(404).json({ message: "SubCategory not found" });
+      }
+    }
 
-  const handleViewEdit = (product) => {
-    setSelectedProduct(product);
-    setShowDialog(true);
-  };
+    // 7. Set up sorting by price (low to high or high to low)
+    let sortQuery = {};
+    if (sort === "lowToHigh") {
+      sortQuery.price = 1; // Ascending
+    } else if (sort === "highToLow") {
+      sortQuery.price = -1; // Descending
+    }
 
-  const closeDialog = () => {
-    setSelectedProduct(null);
-    setShowDialog(false);
-  };
+    // 8. Execute the query with filters and sorting
+    const products = await Product.find(query)
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .sort(sortQuery);
 
-  return (
-    <RecentOrderWrap>
-      <h2>Products</h2>
-      {loading ? (
-        <p>Loading...</p>
-      ) : error ? (
-        <p>Error: {error}</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Cover Photo</th>
-              <th>Photos</th>
-              <th>Price</th>
-              <th>Sub-Category</th>
-              <th>Category</th>
-              <th>Colors</th>
-              <th>Sizes</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product, index) => (
-              <tr key={index}>
-                <td>{product.productName}</td>
-                <td>
-                  <img
-                    src={product.coverImage}
-                    alt={product.productName}
-                    style={{
-                      width: "50px",
-                      height: "50px",
-                      objectFit: "cover",
-                    }}
-                  />
-                </td>
-                <td>
-                  {product.variants.map((variant, vIndex) => (
-                    <img
-                      key={vIndex}
-                      src={variant.imageList[0]}
-                      alt={variant.color}
-                      style={{
-                        width: "30px",
-                        height: "30px",
-                        objectFit: "cover",
-                        marginRight: "5px",
-                      }}
-                    />
-                  ))}
-                </td>
-                <td>{product.price} $</td>
-                <td>{product.subCategory.name}</td>
-                <td>{product.category.name}</td>
-                <td>
-                  {product.variants.map((variant, vIndex) => (
-                    <div
-                      key={vIndex}
-                      style={{
-                        display: "inline-block",
-                        width: "15px",
-                        height: "15px",
-                        backgroundColor: variant.color,
-                        marginRight: "5px",
-                        borderRadius: "50%",
-                      }}
-                    ></div>
-                  ))}
-                </td>
-                <td>
-                  <ul>
-                    {product.variants.flatMap((variant) =>
-                      variant.sizes.map((size, sIndex) => (
-                        <li key={sIndex}>{size.size}</li>
-                      ))
-                    )}
-                  </ul>
-                </td>
-                <td>
-                  <button
-                    style={{ marginRight: "5px" }}
-                    onClick={() => handleViewEdit(product)}
-                  >
-                    View
-                  </button>
-                  <button onClick={() => handleViewEdit(product)}>Edit</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    // 9. Handle case where no products are found
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found" });
+    }
 
-      {/* Dialog Component */}
-      <Overlay show={showDialog} onClick={closeDialog} />
-      <Dialog show={showDialog}>
-        {selectedProduct && (
-          <form>
-            <FormSection>
-              <h4>Product Information</h4>
-              <label htmlFor="productName">Name</label>
-              <input
-                type="text"
-                id="productName"
-                defaultValue={selectedProduct.productName}
-                readOnly
-              />
-              <label htmlFor="description">Description</label>
-              <textarea
-                id="description"
-                rows="3"
-                defaultValue={selectedProduct.description}
-                readOnly
-              />
-              <label htmlFor="variants">Variants</label>
-              {selectedProduct.variants.map((variant, index) => (
-                <div className="variant-container" key={index}>
-                  <label>Color</label>
-                  <input
-                    type="text"
-                    value={variant.color}
-                    readOnly
-                    style={{ width: "100%", marginBottom: "10px" }}
-                  />
-                  <div className="variant-row">
-                    <input type="text" value="Size" readOnly />
-                    <input type="text" value="Price" readOnly />
-                    <input type="text" value="Stock" readOnly />
-                    <button className="add-size-button">+</button>
-                  </div>
-                  {variant.sizes.map((size, sIndex) => (
-                    <div className="variant-row" key={sIndex}>
-                      <input type="text" value={size.size} readOnly />
-                      <input type="text" value={size.price} readOnly />
-                      <input type="text" value={size.stock} readOnly />
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </FormSection>
+    // 10. Return the list of products
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error fetching products:", error.message);
+    return res.status(500).json({
+      message: "Error fetching products",
+      error: error.message,
+    });
+  }
+};
 
-            <ButtonGroup>
-              <button type="button" className="cancel" onClick={closeDialog}>
-                Close
-              </button>
-              <button type="button" className="continue" onClick={closeDialog}>
-                Done
-              </button>
-            </ButtonGroup>
-          </form>
-        )}
-      </Dialog>
-    </RecentOrderWrap>
-  );
-}
+exports.searchProducts = async (req, res) => {
+  try {
+    const { searchTerm, limit } = req.query;
+
+    if (!searchTerm) {
+      return res.status(400).json({ message: "Search term is required" });
+    }
+
+    const regex = new RegExp(searchTerm, "i"); // Case-insensitive search
+
+    // Log the query parameters to debug input issues
+    console.log("Search Term:", searchTerm);
+
+    const products = await Product.find({ productName: { $regex: regex } })
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .limit(parseInt(limit) || 10);
+
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error searching products:", error.message);
+    return res.status(500).json({
+      message: "Error searching products",
+      error: error.message,
+    });
+  }
+};
+
+exports.getLatestProducts = async (req, res) => {
+  try {
+    const { limit } = req.query;
+
+    // Default limit is 10 if not provided
+    const productLimit = parseInt(limit) || 10;
+
+    // Fetch latest products sorted by createdDate in descending order
+    const latestProducts = await Product.find()
+      .sort({ createdDate: -1 }) // Sort by latest first
+      .limit(productLimit) // Limit the results
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name"); // Populate subcategory name
+
+    if (latestProducts.length === 0) {
+      return res.status(404).json({ message: "No latest products found" });
+    }
+
+    return res.status(200).json({ products: latestProducts });
+  } catch (error) {
+    console.error("Error fetching latest products:", error);
+    return res.status(500).json({
+      message: "Error fetching latest products",
+      error: error.message,
+    });
+  }
+};
+
+exports.getProductsById = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { color } = req.query; // Accept color as a query parameter
+
+    // Validate the productId format
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    // Query the product by ID
+    const product = await Product.findById(productId)
+      .populate("category", "name")
+      .populate("subCategory", "name");
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Get a list of available colors
+    const availableColors = product.variants.map((v) => v.color);
+
+    // If color is specified, find the variant for that color
+    let selectedVariant = null;
+    if (color) {
+      selectedVariant = product.variants.find(
+        (v) => v.color.toLowerCase() === color.toLowerCase()
+      );
+
+      if (!selectedVariant) {
+        return res
+          .status(404)
+          .json({ message: "Variant not found for this color" });
+      }
+    } else {
+      // If no color is specified, you can choose to return the first variant
+      selectedVariant = product.variants[0];
+    }
+
+    return res.status(200).json({
+      productId: product._id,
+      productName: product.productName,
+      description: product.description,
+      price: product.price,
+      sku: product.sku,
+      category: product.category,
+      subCategory: product.subCategory,
+      fit: product.fit,
+      material: product.material,
+      fabric: product.fabric,
+      designerRef: product.designerRef,
+      coverImage: product.coverImage,
+      availableColors: availableColors,
+      variant: selectedVariant,
+    });
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    return res.status(500).json({
+      message: "Error fetching product",
+      error: error.message,
+    });
+  }
+};
+
+exports.getProductsBySubCategory = async (req, res) => {
+  try {
+    const { subCategoryId } = req.params;
+    const { fit, color, minPrice, maxPrice, sortBy, sortOrder } = req.query;
+
+    // Validate the subCategoryId format
+    if (!mongoose.isValidObjectId(subCategoryId)) {
+      return res.status(400).json({ message: "Invalid subCategory ID" });
+    }
+
+    // Build the query object with optional filters
+    const query = { subCategory: subCategoryId };
+
+    // Handle comma-separated fit values
+    if (fit) {
+      const fitArray = fit.split(",").map((f) => f.trim());
+      query.fit = { $in: fitArray };
+    }
+
+    // Handle comma-separated color values
+    if (color) {
+      const colorArray = color.split(",").map((c) => c.trim());
+      query.color = { $in: colorArray };
+    }
+
+    // Add price filter only if minPrice or maxPrice is provided
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
+
+    // Determine sorting order (default to ascending if not provided)
+    const sortOptions = {};
+    if (sortBy) {
+      sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
+    }
+
+    // Fetch the products with the applied filters and sorting
+    const products = await Product.find(query)
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name") // Populate subcategory name
+      .sort(sortOptions);
+
+    if (products.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No products found for this subcategory" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error fetching products by subcategory:", error);
+    return res.status(500).json({
+      message: "Error fetching products by subcategory",
+      error: error.message,
+    });
+  }
+};
+
+exports.getProductVariantByColor = async (req, res) => {
+  try {
+    const { productId, color } = req.params;
+
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    if (!color) {
+      return res.status(400).json({ message: "Color is required" });
+    }
+
+    // Find the product by ID
+    const product = await Product.findById(productId)
+      .populate("category", "name")
+      .populate("subCategory", "name");
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Find the variant with the specified color
+    const variant = product.variants.find(
+      (v) => v.color.toLowerCase() === color.toLowerCase()
+    );
+
+    if (!variant) {
+      return res
+        .status(404)
+        .json({ message: "Variant not found for this color" });
+    }
+
+    // Return the variant along with the product details
+    return res.status(200).json({
+      productId: product._id,
+      productName: product.productName,
+      description: product.description,
+      category: product.category,
+      subCategory: product.subCategory,
+      fit: product.fit,
+      material: product.material,
+      fabric: product.fabric,
+      designerRef: product.designerRef,
+      coverImage: product.coverImage,
+      variant: variant,
+    });
+  } catch (error) {
+    console.error("Error fetching product variant:", error);
+    return res.status(500).json({
+      message: "Error fetching product variant",
+      error: error.message,
+    });
+  }
+};
+
+exports.getProductsByDesigner = async (req, res) => {
+  try {
+    const { designerRef } = req.params;
+    const {
+      category,
+      subCategory,
+      color,
+      fit,
+      minPrice,
+      maxPrice,
+      sortBy,
+      order,
+    } = req.query;
+
+    // Validate if designerRef is provided
+    if (!designerRef) {
+      return res
+        .status(400)
+        .json({ message: "Designer reference is required" });
+    }
+
+    // Build the query object dynamically
+    const query = { designerRef };
+
+    if (category) query.category = category;
+    if (subCategory) query.subCategory = subCategory;
+    if (color) query.color = color;
+    if (fit) query.fit = fit;
+
+    // Handle optional price range filter
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+    }
+
+    // Create the products query
+    let productsQuery = Product.find(query)
+      .populate("category", "name")
+      .populate("subCategory", "name");
+
+    // Handle optional sorting
+    if (sortBy) {
+      const sortOrder = order === "desc" ? -1 : 1; // Default order is ascending
+      productsQuery = productsQuery.sort({ [sortBy]: sortOrder });
+    }
+
+    // Execute the query
+    const products = await productsQuery;
+
+    // Check if products were found
+    if (!products.length) {
+      return res
+        .status(404)
+        .json({ message: "No products found for this designer" });
+    }
+
+    return res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error fetching products by designer:", error);
+    return res.status(500).json({
+      message: "Error fetching products by designer",
+      error: error.message,
+    });
+  }
+};
+
+exports.searchProductsAdvanced = async (req, res) => {
+  try {
+    const {
+      searchTerm, // Keyword search for product name
+      category, // Filter by category name
+      subCategory, // Filter by subcategory name
+      minPrice, // Minimum price filter
+      maxPrice, // Maximum price filter
+      color, // Filter by product color
+      fit, // Filter by product fit
+      sortBy, // Sort by field (e.g., price, name)
+      order = "asc", // Order of sorting (asc/desc)
+      page = 1, // Pagination: page number
+      limit = 10, // Pagination: items per page
+    } = req.query;
+
+    // Build dynamic query object
+    let query = {};
+
+    // 1. Search term for product name (case-insensitive)
+    if (searchTerm) {
+      query.productName = { $regex: new RegExp(searchTerm, "i") };
+    }
+
+    // 2. Filter by category (ensure valid ID query)
+    if (category) {
+      const categoryDoc = await Category.findOne({ name: category });
+      if (!categoryDoc) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      query.category = categoryDoc._id.toString(); // Store as a string to prevent ObjectId conflicts
+    }
+
+    // 3. Filter by subcategory
+    if (subCategory) {
+      const subCategoryDoc = await SubCategory.findOne({ name: subCategory });
+      if (!subCategoryDoc) {
+        return res.status(404).json({ message: "Subcategory not found" });
+      }
+      query.subCategory = subCategoryDoc._id.toString();
+    }
+
+    // 4. Filter by price range
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+    }
+
+    // 5. Filter by color within product variants
+    if (color) {
+      query["variants.color"] = { $regex: new RegExp(color, "i") };
+    }
+
+    // 6. Filter by fit
+    if (fit) {
+      query.fit = fit;
+    }
+
+    // 7. Set up sorting (default to ascending order)
+    let sortQuery = {};
+    if (sortBy) {
+      sortQuery[sortBy] = order === "desc" ? -1 : 1;
+    }
+
+    // 8. Calculate pagination values
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // 9. Execute the query with filters, sorting, and pagination
+    const products = await Product.find(query)
+      .populate("category", "name") // Populate category name
+      .populate("subCategory", "name") // Populate subCategory name
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // 10. Handle case where no products are found
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found" });
+    }
+
+    // 11. Return the list of products with pagination info
+    const totalProducts = await Product.countDocuments(query);
+    return res.status(200).json({
+      products,
+      pagination: {
+        currentPage: parseInt(page),
+        totalProducts,
+        totalPages: Math.ceil(totalProducts / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error searching products:", error.message);
+    return res.status(500).json({
+      message: "Error searching products",
+      error: error.message,
+    });
+  }
+};
+
+exports.getTotalProductsByDesigner = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+
+    // Validate designerId
+    if (!designerId) {
+      return res.status(400).json({ message: "Designer ID is required" });
+    }
+
+    // Count the number of products by designer ID
+    const totalProducts = await Product.countDocuments({
+      designerRef: designerId,
+    });
+
+    return res.status(200).json({
+      totalProducts,
+    });
+  } catch (error) {
+    console.error("Error fetching total products by designer:", error.message);
+    return res.status(500).json({
+      message: "Error fetching total products by designer",
+      error: error.message,
+    });
+  }
+};
 
 exports.updateProduct = async (req, res) => {
   try {
@@ -323,14 +890,19 @@ exports.updateProduct = async (req, res) => {
     }
 
     // Update the product with the provided fields
-    const updatedProduct = await Product.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    );
 
-    return res.status(200).json({ message: "Product updated successfully", updatedProduct });
+    return res
+      .status(200)
+      .json({ message: "Product updated successfully", updatedProduct });
   } catch (error) {
     console.error("Error updating product:", error.message);
-    return res.status(500).json({ message: "Failed to update product", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Failed to update product", error: error.message });
   }
 };
-
-
-export default ProductsTable;
