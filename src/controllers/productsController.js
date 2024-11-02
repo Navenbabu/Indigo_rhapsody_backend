@@ -38,6 +38,87 @@ const uploadImageFromURL = async (imageUrl, filename) => {
     throw new Error(`Failed to upload image from URL: ${error.message}`);
   }
 };
+exports.createProduct = async (req, res) => {
+  try {
+    const {
+      productName,
+      category,
+      subCategory,
+      description,
+      price,
+      sku,
+      fit,
+      fabric,
+      material,
+      imageUrls,
+      designerRef,
+      variants, // Array of variant objects: { color, sizes: [{ size, price, stock }] }
+    } = req.body;
+
+    // Check if required fields are present
+    if (!productName || !category || !price || !designerRef) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Find or create category
+    const categoryDoc = await Category.findOneAndUpdate(
+      { name: category },
+      { name: category },
+      { upsert: true, new: true }
+    );
+
+    // Find or create subcategory
+    const subCategoryDoc = await SubCategory.findOneAndUpdate(
+      { name: subCategory },
+      { name: subCategory, category: categoryDoc._id },
+      { upsert: true, new: true }
+    );
+
+    // Upload images and create image URLs
+    let imageList = [];
+    for (const url of imageUrls) {
+      const filename = url.split("/").pop();
+      const firebaseUrl = await uploadImageFromURL(url, filename);
+      imageList.push(firebaseUrl);
+    }
+
+    // Create product
+    const product = new Product({
+      productName,
+      category: categoryDoc._id,
+      subCategory: subCategoryDoc ? subCategoryDoc._id : null,
+      description,
+      price,
+      sku,
+      fit,
+      fabric,
+      material,
+      imageList,
+      coverImage: imageList[0] || null,
+      designerRef,
+      createdDate: new Date(),
+      variants: variants.map((variant) => ({
+        color: variant.color,
+        sizes: variant.sizes.map((size) => ({
+          size: size.size,
+          price: size.price,
+          stock: size.stock,
+        })),
+      })),
+    });
+
+    // Save product to the database
+    await product.save();
+
+    res.status(201).json({ message: "Product created successfully", product });
+  } catch (error) {
+    console.error("Error creating product:", error.message);
+    res.status(500).json({
+      message: "Error creating product",
+      error: error.message,
+    });
+  }
+};
 
 exports.searchProductsByDesigner = async (req, res) => {
   try {
