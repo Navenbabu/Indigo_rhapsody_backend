@@ -211,10 +211,15 @@ exports.getOrdersByDesignerRef = async (req, res) => {
     // Query the orders collection to find orders with products matching the designerRef
     const orders = await Order.find({
       "products.designerRef": designerRef,
-    }).populate({
-      path: "products.productId",
-      select: "productName",
-    });
+    })
+      .populate({
+        path: "products.productId",
+        select: "productName",
+      })
+      .populate({
+        path: "userId",
+        select: "displayName phoneNumber email",
+      });
 
     if (!orders.length) {
       return res
@@ -236,7 +241,11 @@ exports.getOrdersByDesignerRef = async (req, res) => {
 
       return {
         orderId: order.orderId,
-        userId: order.userId,
+        userId: {
+          displayName: order.userId.displayName,
+          phoneNumber: order.userId.phoneNumber,
+          email: order.userId.email,
+        },
         products: designerProducts,
         amount: designerAmount,
         paymentMethod: order.paymentMethod,
