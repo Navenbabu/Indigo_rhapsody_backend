@@ -2,21 +2,27 @@ const mongoose = require("mongoose");
 
 const ShippingSchema = new mongoose.Schema({
   order_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Order",
-    required: true,
+    type: String,
+    // required: true,
   },
-  order_date: {
-    type: Date,
-    required: true,
-  },
-  pickup_location: {
+  shipmentId: {
     type: String,
     required: true,
   },
+  invoiceUrl: {
+    type: String,
+  },
+  order_date: {
+    type: Date,
+    // required: true,
+  },
+  pickup_location: {
+    type: String,
+    // required: true,
+  },
   channel_id: {
     type: Number,
-    required: true,
+    // required: true,
   },
   comment: {
     type: String,
@@ -63,10 +69,9 @@ const ShippingSchema = new mongoose.Schema({
       price: {
         type: Number,
       },
-      productName:{
-        type:String
-      }
-   
+      productName: {
+        type: String,
+      },
     },
   ],
   payment_method: {
