@@ -6,5 +6,9 @@ const shippingController = require("../controllers/shippingController");
 router.post("/createOrder", shippingController.ship);
 router.post("/generate-invoice", shippingController.generateInvoice);
 router.post("/generate-manifest", shippingController.generateManifest);
+router.get(
+  "/designer/:designerRef",
+  shippingController.getShippingsByDesignerRef
+);
 
 module.exports = router;

@@ -62,6 +62,9 @@ exports.ship = async (req, res) => {
 
     console.log("Order details fetched successfully:", order);
 
+    // Extract designerRef from the first product or adapt as needed
+    const designerRef = order.products[0]?.productId.designerRef || "N/A";
+
     const requestBody = {
       order_id: order.orderId,
       order_date: order.orderDate.toISOString(),
@@ -84,7 +87,6 @@ exports.ship = async (req, res) => {
         units: product.quantity,
         selling_price: product.price,
         productId: product.productId._id,
-        designerRef: product.productId.designerRef,
       })),
       payment_method: order.paymentMethod,
       total_discount: order.discountAmount || 0,
@@ -121,12 +123,12 @@ exports.ship = async (req, res) => {
     console.log("Shipping created successfully with shipment ID:", shipment_id);
 
     const shippingDoc = new Shipping({
-      order_id: order_id,
+      order_id: orderId, // Store the original order ID
       shipmentId: shipment_id,
       status: status,
+      designerRef: designerRef, // Store designerRef at the top level
       productDetails: order.products.map((product) => ({
         productId: product.productId._id,
-        designerRef: product.productId.designerRef,
       })),
       invoiceUrl: "",
       order_date: order.orderDate,
@@ -171,13 +173,12 @@ exports.ship = async (req, res) => {
     });
     console.log("Finished ship function");
   } catch (error) {
-    console.error("Error creating shipping order:", error);
+    console.error("Error creating shipping order:", error.message);
     res
       .status(500)
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
-
 exports.generateInvoice = async (req, res) => {
   try {
     const { shipment_id } = req.body;
@@ -316,5 +317,30 @@ exports.generateManifest = async (req, res) => {
     res
       .status(500)
       .json({ error: "Internal Server Error", details: error.message });
+  }
+};
+
+
+exports.getShippingsByDesignerRef = async (req, res) => {
+  try {
+    const { designerRef } = req.params;
+
+    if (!designerRef) {
+      return res.status(400).json({ message: "designerRef is required." });
+    }
+
+    console.log("Fetching Shipping documents for designerRef:", designerRef);
+    
+    const shippings = await Shipping.find({ designerRef });
+
+    if (!shippings.length) {
+      return res.status(404).json({ message: "No shippings found for the given designerRef." });
+    }
+
+    console.log("Shipping documents found:", shippings);
+    res.status(200).json({ message: "Shipping documents retrieved successfully", shippings });
+  } catch (error) {
+    console.error("Error fetching shipping documents by designerRef:", error.message);
+    res.status(500).json({ error: "Internal Server Error", details: error.message });
   }
 };

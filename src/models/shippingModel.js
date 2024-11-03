@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const ShippingSchema = new mongoose.Schema({
   order_id: {
     type: String,
-    // required: true,
+    required: true, // Ensure this is required for data integrity
   },
   shipmentId: {
     type: String,
@@ -14,15 +14,14 @@ const ShippingSchema = new mongoose.Schema({
   },
   order_date: {
     type: Date,
-    // required: true,
+    required: true, // Ensure this is required for data integrity
   },
   pickup_location: {
     type: String,
-    // required: true,
+    required: true, // Ensure this is required for data integrity
   },
   channel_id: {
     type: Number,
-    // required: true,
   },
   comment: {
     type: String,
@@ -72,6 +71,10 @@ const ShippingSchema = new mongoose.Schema({
       productName: {
         type: String,
       },
+      designerRef: {
+        // Add designer reference field
+        type: String,
+      },
     },
   ],
   payment_method: {
@@ -88,6 +91,9 @@ const ShippingSchema = new mongoose.Schema({
   },
   breadth: {
     type: Number,
+  },
+  designerRef: {
+    type: String,
   },
   height: {
     type: Number,
