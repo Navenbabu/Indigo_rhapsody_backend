@@ -42,8 +42,8 @@ exports.createProduct = async (req, res) => {
   try {
     const {
       productName,
-      category,
-      subCategory,
+      category, // This should be the category ID
+      subCategory, // This should be the subcategory ID
       description,
       price,
       sku,
@@ -60,19 +60,20 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Find or create category
-    const categoryDoc = await Category.findOneAndUpdate(
-      { name: category },
-      { name: category },
-      { upsert: true, new: true }
-    );
+    // Look up the existing category by ID
+    const categoryDoc = await Category.findById(category);
+    if (!categoryDoc) {
+      return res.status(404).json({ message: "Category not found" });
+    }
 
-    // Find or create subcategory
-    const subCategoryDoc = await SubCategory.findOneAndUpdate(
-      { name: subCategory },
-      { name: subCategory, category: categoryDoc._id },
-      { upsert: true, new: true }
-    );
+    // Look up the existing subcategory by ID
+    let subCategoryDoc = null;
+    if (subCategory) {
+      subCategoryDoc = await SubCategory.findById(subCategory);
+      if (!subCategoryDoc) {
+        return res.status(404).json({ message: "SubCategory not found" });
+      }
+    }
 
     // Upload images and create image URLs
     let imageList = [];
@@ -119,7 +120,6 @@ exports.createProduct = async (req, res) => {
     });
   }
 };
-
 exports.searchProductsByDesigner = async (req, res) => {
   try {
     const { designerRef, searchTerm, limit } = req.query;
