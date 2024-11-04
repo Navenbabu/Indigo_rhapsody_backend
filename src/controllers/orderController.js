@@ -83,7 +83,7 @@ exports.createOrder = async (req, res) => {
     // Prepare Shipping Details
     const shippingDetails = {
       address: {
-        street: user.address, // Adjust field names based on your User model
+        street: user.address,
         city: user.city,
         state: user.state,
         pincode: user.pincode,
@@ -180,7 +180,7 @@ exports.createOrder = async (req, res) => {
       `,
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
+    transporter.sendMail(mailOptions, async (error, info) => {
       if (error) {
         console.error("Error sending email:", error);
         return res.status(500).json({
@@ -189,8 +189,34 @@ exports.createOrder = async (req, res) => {
         });
       } else {
         console.log("Email sent:", info.response);
+
+        // Extract unique designer IDs
+        const designerIds = [
+          ...new Set(orderProducts.map((p) => p.designerRef.toString())),
+        ];
+
+        // Create notifications for each designer
+        for (const designerId of designerIds) {
+          try {
+            await createOrderNotification({
+              body: {
+                userId: user._id,
+                designeref: designerId,
+                message: `A new order has been placed by ${user.displayName}`,
+                orderId: order._id,
+              },
+            });
+          } catch (notifError) {
+            console.error(
+              `Error creating notification for designer ${designerId}:`,
+              notifError.message
+            );
+          }
+        }
+
         return res.status(201).json({
-          message: "Order created and email sent successfully",
+          message:
+            "Order created, email sent, and notifications created successfully",
           order,
         });
       }

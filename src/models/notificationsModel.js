@@ -6,6 +6,11 @@ const notificationsSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  designeref: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Designer",
+    required: true,
+  },
   message: {
     type: String,
     required: true,
@@ -13,6 +18,17 @@ const notificationsSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     default: Date.now,
+  },
+  seen: {
+    type: Boolean,
+    default: false,
+  },
+  orderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Order",
+  },
+  returnId: {
+    type: String,
   },
 });
 
