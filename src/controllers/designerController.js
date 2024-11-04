@@ -209,22 +209,15 @@ exports.getDesignerDetailsById = async (req, res) => {
 exports.updateDesignerInfo = async (req, res) => {
   try {
     const { designerId } = req.params;
-    const updates = { ...req.body };
+    const { logoUrl, backGroundImage, ...otherUpdates } = req.body;
 
-    // Handle image uploads if new images are provided
-    if (req.files && req.files.logo) {
-      updates.logoUrl = await uploadImage(req.files.logo[0], "designer_logos");
-    }
-
-    if (req.files && req.files.backGroundImage) {
-      updates.backGroundImage = await uploadImage(
-        req.files.backGroundImage[0],
-        "designer_backgrounds"
-      );
-    }
-
-    // Update timestamp
-    updates.updatedTime = Date.now();
+    // Include the URLs directly from the request body if provided
+    const updates = {
+      ...otherUpdates,
+      ...(logoUrl && { logoUrl }), // Only include if logoUrl is provided
+      ...(backGroundImage && { backGroundImage }), // Only include if backGroundImage is provided
+      updatedTime: Date.now(), // Update timestamp
+    };
 
     const updatedDesigner = await Designer.findByIdAndUpdate(
       designerId,
