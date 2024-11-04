@@ -50,9 +50,8 @@ exports.createProduct = async (req, res) => {
       fit,
       fabric,
       material,
-      imageUrls,
       designerRef,
-      variants, // Array of variant objects: { color, sizes: [{ size, price, stock }] }
+      variants, // Array of variant objects: { color, imageList, sizes: [{ size, price, stock }] }
     } = req.body;
 
     // Check if required fields are present
@@ -75,12 +74,31 @@ exports.createProduct = async (req, res) => {
       }
     }
 
-    // Upload images and create image URLs
-    let imageList = [];
-    for (const url of imageUrls) {
-      const filename = url.split("/").pop();
-      const firebaseUrl = await uploadImageFromURL(url, filename);
-      imageList.push(firebaseUrl);
+    // Process each variant to upload images and generate image URLs
+    const processedVariants = [];
+    for (const variant of variants) {
+      const { color, imageList, sizes } = variant;
+      let uploadedImageUrls = [];
+
+      // Upload each image for the variant and get the URLs
+      if (imageList && imageList.length > 0) {
+        for (const url of imageList) {
+          const filename = url.split("/").pop();
+          const firebaseUrl = await uploadImageFromURL(url, filename);
+          uploadedImageUrls.push(firebaseUrl);
+        }
+      }
+
+      // Create the processed variant object with the image URLs and sizes
+      processedVariants.push({
+        color,
+        imageList: uploadedImageUrls,
+        sizes: sizes.map((size) => ({
+          size: size.size,
+          price: size.price,
+          stock: size.stock,
+        })),
+      });
     }
 
     // Create product
@@ -94,18 +112,10 @@ exports.createProduct = async (req, res) => {
       fit,
       fabric,
       material,
-      imageList,
-      coverImage: imageList[0] || null,
+      coverImage: processedVariants[0]?.imageList[0] || null, // Set cover image from the first variant's first image
       designerRef,
       createdDate: new Date(),
-      variants: variants.map((variant) => ({
-        color: variant.color,
-        sizes: variant.sizes.map((size) => ({
-          size: size.size,
-          price: size.price,
-          stock: size.stock,
-        })),
-      })),
+      variants: processedVariants,
     });
 
     // Save product to the database
@@ -120,6 +130,7 @@ exports.createProduct = async (req, res) => {
     });
   }
 };
+
 exports.searchProductsByDesigner = async (req, res) => {
   try {
     const { designerRef, searchTerm, limit } = req.query;
