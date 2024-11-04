@@ -9,7 +9,7 @@ const nodemailer = require("nodemailer");
 const { bucket } = require("../service/firebaseServices");
 const {
   createOrderNotification,
-} = require("../controllers/notificationsController");
+} = require("../controllers/notificationController");
 // To send emails
 
 const transporter = nodemailer.createTransport({
