@@ -165,13 +165,8 @@ exports.ship = async (req, res) => {
     order.invoiceUrl = invoiceBody.invoice_url;
     await order.save();
     console.log("Invoice URL updated in Order document");
-
     order.products.forEach((product) => {
-      if (product.productId && product.productId.variants) {
-        product.productId.variants.forEach((variant) => {
-          variant.shipping_status = "Order-Shipped"; // Update the shipping status
-        });
-      }
+      product.shipping_status = "Order-Shipped";
     });
 
     res.status(200).json({
