@@ -1,6 +1,27 @@
 const Notifications = require("../models/notificationsModel");
 
 // Create a new order notification
+
+exports.createNotification = async ({
+  userId,
+  designeref,
+  message,
+  orderId,
+}) => {
+  try {
+    const newNotification = new Notifications({
+      userId,
+      designeref,
+      message,
+      orderId,
+    });
+
+    await newNotification.save();
+    return { success: true, data: newNotification };
+  } catch (error) {
+    throw new Error(`Failed to create notification: ${error.message}`);
+  }
+};
 exports.createOrderNotification = async (req, res) => {
   try {
     const { userId, designeref, message, orderId } = req.body;

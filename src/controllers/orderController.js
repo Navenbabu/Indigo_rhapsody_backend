@@ -7,10 +7,7 @@ const fs = require("fs");
 const PDFDocument = require("pdfkit"); // To generate PDF invoices
 const nodemailer = require("nodemailer");
 const { bucket } = require("../service/firebaseServices");
-const {
-  createOrderNotification,
-} = require("../controllers/notificationController");
-// To send emails
+const { createNotification } = require("../controllers/notificationController");
 
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
@@ -76,6 +73,7 @@ exports.getTotalOrdersOfparticularDesigner = async (req, res) => {};
 
 // Create Order Controller
 // Create Order Controller
+
 exports.createOrder = async (req, res) => {
   try {
     const { userId, cartId, paymentMethod, notes } = req.body;
@@ -202,13 +200,11 @@ exports.createOrder = async (req, res) => {
         // Create notifications for each designer
         for (const designerId of designerIds) {
           try {
-            await createOrderNotification({
-              body: {
-                userId: user._id,
-                designeref: designerId,
-                message: `A new order has been placed by ${user.displayName}`,
-                orderId: order._id,
-              },
+            await createNotification({
+              userId: user._id,
+              designeref: designerId,
+              message: `A new order has been placed by ${user.displayName}`,
+              orderId: order._id,
             });
           } catch (notifError) {
             console.error(
