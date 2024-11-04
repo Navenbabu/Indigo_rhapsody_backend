@@ -204,20 +204,22 @@ exports.getDesignerDetailsById = async (req, res) => {
     });
   }
 };
-
-// Update Designer Information by Designer ID
 exports.updateDesignerInfo = async (req, res) => {
   try {
     const { designerId } = req.params;
-    const { logoUrl, backGroundImage, ...otherUpdates } = req.body;
+    const { _id, ...updates } = req.body; // Destructure _id to exclude it from updates
 
-    // Include the URLs directly from the request body if provided
-    const updates = {
-      ...otherUpdates,
-      ...(logoUrl && { logoUrl }), // Only include if logoUrl is provided
-      ...(backGroundImage && { backGroundImage }), // Only include if backGroundImage is provided
-      updatedTime: Date.now(), // Update timestamp
-    };
+    // Include only the necessary fields for update
+    if (updates.logoUrl) {
+      updates.logoUrl = updates.logoUrl;
+    }
+
+    if (updates.backGroundImage) {
+      updates.backGroundImage = updates.backGroundImage;
+    }
+
+    // Update timestamp
+    updates.updatedTime = Date.now();
 
     const updatedDesigner = await Designer.findByIdAndUpdate(
       designerId,
