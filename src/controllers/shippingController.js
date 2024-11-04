@@ -166,6 +166,14 @@ exports.ship = async (req, res) => {
     await order.save();
     console.log("Invoice URL updated in Order document");
 
+    order.products.forEach((product) => {
+      if (product.productId && product.productId.variants) {
+        product.productId.variants.forEach((variant) => {
+          variant.shipping_status = "Order-Shipped"; // Update the shipping status
+        });
+      }
+    });
+
     res.status(200).json({
       message: "Shipping order created successfully",
       data: responseBody,
@@ -320,7 +328,6 @@ exports.generateManifest = async (req, res) => {
   }
 };
 
-
 exports.getShippingsByDesignerRef = async (req, res) => {
   try {
     const { designerRef } = req.params;
@@ -330,17 +337,27 @@ exports.getShippingsByDesignerRef = async (req, res) => {
     }
 
     console.log("Fetching Shipping documents for designerRef:", designerRef);
-    
+
     const shippings = await Shipping.find({ designerRef });
 
     if (!shippings.length) {
-      return res.status(404).json({ message: "No shippings found for the given designerRef." });
+      return res
+        .status(404)
+        .json({ message: "No shippings found for the given designerRef." });
     }
 
     console.log("Shipping documents found:", shippings);
-    res.status(200).json({ message: "Shipping documents retrieved successfully", shippings });
+    res.status(200).json({
+      message: "Shipping documents retrieved successfully",
+      shippings,
+    });
   } catch (error) {
-    console.error("Error fetching shipping documents by designerRef:", error.message);
-    res.status(500).json({ error: "Internal Server Error", details: error.message });
+    console.error(
+      "Error fetching shipping documents by designerRef:",
+      error.message
+    );
+    res
+      .status(500)
+      .json({ error: "Internal Server Error", details: error.message });
   }
 };
