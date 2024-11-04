@@ -6,7 +6,11 @@ const User = require("../models/userModel");
 const fs = require("fs");
 const PDFDocument = require("pdfkit"); // To generate PDF invoices
 const nodemailer = require("nodemailer");
-const { bucket } = require("../service/firebaseServices"); // To send emails
+const { bucket } = require("../service/firebaseServices");
+const {
+  createOrderNotification,
+} = require("../controllers/notificationsController");
+// To send emails
 
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
