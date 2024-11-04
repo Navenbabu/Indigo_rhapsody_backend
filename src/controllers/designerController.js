@@ -179,3 +179,74 @@ exports.deleteDesigner = async (req, res) => {
     });
   }
 };
+
+// Get Designer Details and Associated User by Designer ID
+exports.getDesignerDetailsById = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+
+    // Find the designer and populate user details
+    const designer = await Designer.findById(designerId).populate(
+      "userId",
+      "displayName email phoneNumber address"
+    );
+
+    if (!designer) {
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    return res.status(200).json({ designer });
+  } catch (error) {
+    console.error("Error fetching designer details:", error);
+    return res.status(500).json({
+      message: "Error fetching designer details",
+      error: error.message,
+    });
+  }
+};
+
+// Update Designer Information by Designer ID
+exports.updateDesignerInfo = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+    const updates = { ...req.body };
+
+    // Handle image uploads if new images are provided
+    if (req.files && req.files.logo) {
+      updates.logoUrl = await uploadImage(req.files.logo[0], "designer_logos");
+    }
+
+    if (req.files && req.files.backGroundImage) {
+      updates.backGroundImage = await uploadImage(
+        req.files.backGroundImage[0],
+        "designer_backgrounds"
+      );
+    }
+
+    // Update timestamp
+    updates.updatedTime = Date.now();
+
+    const updatedDesigner = await Designer.findByIdAndUpdate(
+      designerId,
+      updates,
+      {
+        new: true,
+      }
+    ).populate("userId", "displayName email phoneNumber address");
+
+    if (!updatedDesigner) {
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    return res.status(200).json({
+      message: "Designer information updated successfully",
+      designer: updatedDesigner,
+    });
+  } catch (error) {
+    console.error("Error updating designer information:", error);
+    return res.status(500).json({
+      message: "Error updating designer information",
+      error: error.message,
+    });
+  }
+};

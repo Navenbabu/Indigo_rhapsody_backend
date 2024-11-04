@@ -22,6 +22,9 @@ router.put(
   designerController.updateDesigner
 );
 
+router.get("/:designerId/details", designerController.getDesignerDetailsById);
+router.put("/:designerId/update", designerController.updateDesignerInfo);
+
 router.delete("/designers/:id", designerController.deleteDesigner);
 
 module.exports = router;
