@@ -122,6 +122,13 @@ exports.ship = async (req, res) => {
     const { shipment_id, status, order_id } = responseBody;
     console.log("Shipping created successfully with shipment ID:", shipment_id);
 
+    order.products.forEach((product) => {
+      product.shipping_status = "Order-Shipped";
+    });
+
+    await order.save();
+    console.log("Shipping status updated in Order document");
+
     const shippingDoc = new Shipping({
       order_id: orderId, // Store the original order ID
       shipmentId: shipment_id,
@@ -165,9 +172,6 @@ exports.ship = async (req, res) => {
     order.invoiceUrl = invoiceBody.invoice_url;
     await order.save();
     console.log("Invoice URL updated in Order document");
-    order.products.forEach((product) => {
-      product.shipping_status = "Order-Shipped";
-    });
 
     res.status(200).json({
       message: "Shipping order created successfully",
