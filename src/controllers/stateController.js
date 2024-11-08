@@ -14,7 +14,7 @@ exports.CreateState = async (req, res) => {
 
 exports.getStates = async (req, res) => {
   try {
-    const states = await State.find();
+    const states = await State.find().sort({ name: 1 });
     res.status(200).json({ states });
   } catch (error) {
     res.status(500).json({ error });
