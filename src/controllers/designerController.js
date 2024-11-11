@@ -105,7 +105,7 @@ exports.getDesignerById = async (req, res) => {
     const { id } = req.params;
     const designer = await Designer.findById(id).populate(
       "userId",
-      "displayName"
+      "displayName phoneNumber address city state pincode"
     );
 
     if (!designer) {
