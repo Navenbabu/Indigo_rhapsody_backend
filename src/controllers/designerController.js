@@ -180,6 +180,21 @@ exports.deleteDesigner = async (req, res) => {
   }
 };
 
+exports.getTotalDesignerCount = async (req, res) => {
+  try {
+    // Count the total number of documents in the Designer collection
+    const totalDesigners = await Designer.countDocuments();
+
+    return res.status(200).json({ totalDesigners });
+  } catch (error) {
+    console.error("Error fetching total designer count:", error);
+    return res.status(500).json({
+      message: "Error fetching total designer count",
+      error: error.message,
+    });
+  }
+};
+
 // Get Designer Details and Associated User by Designer ID
 exports.getDesignerDetailsById = async (req, res) => {
   try {

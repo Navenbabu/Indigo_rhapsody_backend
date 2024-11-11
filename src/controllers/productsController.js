@@ -517,6 +517,21 @@ exports.getLatestProducts = async (req, res) => {
   }
 };
 
+exports.getTotalProductCount = async (req, res) => {
+  try {
+    // Count the total number of documents in the Product collection
+    const totalProducts = await Product.countDocuments();
+
+    return res.status(200).json({ totalProducts });
+  } catch (error) {
+    console.error("Error fetching total product count:", error);
+    return res.status(500).json({
+      message: "Error fetching total product count",
+      error: error.message,
+    });
+  }
+};
+
 exports.getProductsById = async (req, res) => {
   try {
     const { productId } = req.params;

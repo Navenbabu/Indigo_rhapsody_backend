@@ -132,6 +132,20 @@ exports.getUserById = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+exports.getTotalUserCount = async (req, res) => {
+  try {
+    // Count the number of users with the role "User"
+    const totalUsers = await User.countDocuments({ role: "User" });
+
+    return res.status(200).json({ totalUsers });
+  } catch (error) {
+    console.error("Error fetching total user count:", error);
+    return res.status(500).json({
+      message: "Error fetching total user count",
+      error: error.message,
+    });
+  }
+};
 
 // Controller to create User and Designer
 exports.createUserAndDesigner = async (req, res) => {

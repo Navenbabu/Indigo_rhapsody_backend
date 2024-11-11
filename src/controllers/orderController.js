@@ -422,6 +422,22 @@ exports.getOrderById = async (req, res) => {
     });
   }
 };
+// Endpoint to get total number of orders
+exports.getTotalOrderCount = async (req, res) => {
+  try {
+    // Count the total number of documents in the Order collection
+    const totalOrders = await Order.countDocuments();
+
+    return res.status(200).json({ totalOrders });
+  } catch (error) {
+    console.error("Error fetching total order count:", error);
+    return res.status(500).json({
+      message: "Error fetching total order count",
+      error: error.message,
+    });
+  }
+};
+
 exports.createReturnRequest = async (req, res) => {
   try {
     const { orderId, productId, reason } = req.body;

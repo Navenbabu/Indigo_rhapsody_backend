@@ -13,6 +13,7 @@ router.post(
 );
 
 router.get("/designers", designerController.getAllDesigners);
+router.get("/total-count", designerController.getTotalDesignerCount);
 
 router.get("/designers/:id", designerController.getDesignerById);
 

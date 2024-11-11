@@ -9,6 +9,7 @@ router.get("/getAllOrders", orderController.getAllOrders);
 router.get("/designer/:designerRef", orderController.getOrdersByDesignerRef);
 router.get("/order/:orderId", orderController.getOrderById);
 router.post("/return-request", orderController.createReturnRequest);
+router.get("/orders/total-count", orderController.getTotalOrderCount);
 router.get(
   "/total-orders-by-designers",
   orderController.getTotalOrdersByDesigners

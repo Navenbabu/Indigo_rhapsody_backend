@@ -8,4 +8,5 @@ router.post("/createUser", userController.createUser);
 router.put("/:userId", userController.updateUser);
 router.post("/user-designer", userController.createUserAndDesigner);
 router.post("/login", userController.loginDesigner);
+router.get("/total-count", userController.getTotalUserCount);
 module.exports = router;

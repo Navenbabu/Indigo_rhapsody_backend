@@ -13,6 +13,7 @@ router.get("/products/search", productController.searchProductsAdvanced);
 router.get("/designerSearch", productController.searchProductsByDesigner);
 router.get("/latestProducts", productController.getLatestProducts);
 router.put("/products/:id", productController.updateProduct);
+router.get("/total-count", productController.getTotalProductCount);
 router.get(
   "/subCategory/:subCategoryId",
   productController.getProductsBySubCategory
