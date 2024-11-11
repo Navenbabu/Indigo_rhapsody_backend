@@ -438,6 +438,59 @@ exports.getTotalOrderCount = async (req, res) => {
   }
 };
 
+exports.getDailyOrderStats = async (req, res) => {
+  try {
+    // Define the start date as 30 days before today
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+
+    const dailyOrders = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+            day: { $dayOfMonth: "$createdAt" },
+          },
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: "$amount" },
+        },
+      },
+      {
+        $sort: {
+          "_id.year": 1,
+          "_id.month": 1,
+          "_id.day": 1,
+        },
+      },
+    ]);
+
+    // Format the data for easier consumption on the frontend
+    const formattedData = dailyOrders.map((entry) => {
+      const { year, month, day } = entry._id;
+      const date = new Date(year, month - 1, day);
+      return {
+        date: date.toISOString().split("T")[0], // Format as 'YYYY-MM-DD'
+        totalOrders: entry.totalOrders,
+        totalRevenue: entry.totalRevenue,
+      };
+    });
+
+    res.status(200).json({ dailyStats: formattedData });
+  } catch (error) {
+    console.error("Error fetching daily order stats:", error);
+    res.status(500).json({
+      message: "Error fetching daily order stats",
+      error: error.message,
+    });
+  }
+};
+
 exports.createReturnRequest = async (req, res) => {
   try {
     const { orderId, productId, reason } = req.body;
