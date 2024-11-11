@@ -440,20 +440,17 @@ exports.getTotalOrderCount = async (req, res) => {
 
 exports.getMonthlyOrderStats = async (req, res) => {
   try {
-    // Get the current date
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth(); // Zero-based index for months
+    const month = parseInt(req.query.month) || new Date().getMonth() + 1; // Default to current month
+    const year = parseInt(req.query.year) || new Date().getFullYear(); // Default to current year
 
-    // Define the start and end dates for the current month
-    const startDate = new Date(currentYear, currentMonth, 1); // First day of the month
-    const endDate = new Date(currentYear, currentMonth + 1, 1); // First day of the next month
+    // Define the start and end dates for the month
+    const startDate = new Date(year, month - 1, 1); // First day of the specified month
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of the specified month
 
-    // Fetch orders created within the current month
     const dailyOrders = await Order.aggregate([
       {
         $match: {
-          createdAt: { $gte: startDate, $lt: endDate },
+          createdAt: { $gte: startDate, $lte: endDate },
         },
       },
       {
@@ -468,9 +465,8 @@ exports.getMonthlyOrderStats = async (req, res) => {
       },
     ]);
 
-    // Format the data for easier consumption on the frontend
     const formattedData = dailyOrders.map((entry) => ({
-      day: entry._id.day, // Day of the month
+      day: entry._id.day,
       totalOrders: entry.totalOrders,
       totalRevenue: entry.totalRevenue,
     }));
