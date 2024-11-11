@@ -28,4 +28,15 @@ router.put("/:designerId/update", designerController.updateDesignerInfo);
 
 router.delete("/designers/:id", designerController.deleteDesigner);
 
+router.get("/pending-count", designerController.getPendingDesignerCount);
+
+// Get count of approved designers
+router.get("/approved-count", designerController.getApprovedDesignerCount);
+
+// Update designer status (admin only)
+router.patch(
+  "/:designerId/status",
+  designerController.updateDesignerApprovalStatus
+);
+
 module.exports = router;

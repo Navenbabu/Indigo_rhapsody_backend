@@ -260,3 +260,63 @@ exports.updateDesignerInfo = async (req, res) => {
     });
   }
 };
+
+exports.getPendingDesignerCount = async (req, res) => {
+  try {
+    const pendingCount = await Designer.countDocuments({ is_approved: false });
+    return res.status(200).json({ pendingCount });
+  } catch (error) {
+    console.error("Error fetching pending designer count:", error);
+    return res.status(500).json({
+      message: "Error fetching pending designer count",
+      error: error.message,
+    });
+  }
+};
+
+// Get the count of approved designers (is_approved: true)
+exports.getApprovedDesignerCount = async (req, res) => {
+  try {
+    const approvedCount = await Designer.countDocuments({ is_approved: true });
+    return res.status(200).json({ approvedCount });
+  } catch (error) {
+    console.error("Error fetching approved designer count:", error);
+    return res.status(500).json({
+      message: "Error fetching approved designer count",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateDesignerApprovalStatus = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+    const { is_approved } = req.body;
+
+    // Ensure is_approved is a boolean before updating
+    if (typeof is_approved !== "boolean") {
+      return res.status(400).json({ message: "Invalid approval status" });
+    }
+
+    const designer = await Designer.findByIdAndUpdate(
+      designerId,
+      { is_approved, updatedTime: Date.now() },
+      { new: true }
+    ).populate("userId", "displayName email phoneNumber address");
+
+    if (!designer) {
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    return res.status(200).json({
+      message: `Designer approval status updated successfully`,
+      designer,
+    });
+  } catch (error) {
+    console.error("Error updating designer approval status:", error);
+    return res.status(500).json({
+      message: "Error updating designer approval status",
+      error: error.message,
+    });
+  }
+};
