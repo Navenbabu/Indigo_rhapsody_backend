@@ -438,54 +438,48 @@ exports.getTotalOrderCount = async (req, res) => {
   }
 };
 
-exports.getDailyOrderStats = async (req, res) => {
+exports.getMonthlyOrderStats = async (req, res) => {
   try {
-    // Define the start date as 30 days before today
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
+    // Get the current date
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // Zero-based index for months
 
+    // Define the start and end dates for the current month
+    const startDate = new Date(currentYear, currentMonth, 1); // First day of the month
+    const endDate = new Date(currentYear, currentMonth + 1, 1); // First day of the next month
+
+    // Fetch orders created within the current month
     const dailyOrders = await Order.aggregate([
       {
         $match: {
-          createdAt: { $gte: startDate },
+          createdAt: { $gte: startDate, $lt: endDate },
         },
       },
       {
         $group: {
-          _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-            day: { $dayOfMonth: "$createdAt" },
-          },
+          _id: { day: { $dayOfMonth: "$createdAt" } },
           totalOrders: { $sum: 1 },
           totalRevenue: { $sum: "$amount" },
         },
       },
       {
-        $sort: {
-          "_id.year": 1,
-          "_id.month": 1,
-          "_id.day": 1,
-        },
+        $sort: { "_id.day": 1 },
       },
     ]);
 
     // Format the data for easier consumption on the frontend
-    const formattedData = dailyOrders.map((entry) => {
-      const { year, month, day } = entry._id;
-      const date = new Date(year, month - 1, day);
-      return {
-        date: date.toISOString().split("T")[0], // Format as 'YYYY-MM-DD'
-        totalOrders: entry.totalOrders,
-        totalRevenue: entry.totalRevenue,
-      };
-    });
+    const formattedData = dailyOrders.map((entry) => ({
+      day: entry._id.day, // Day of the month
+      totalOrders: entry.totalOrders,
+      totalRevenue: entry.totalRevenue,
+    }));
 
     res.status(200).json({ dailyStats: formattedData });
   } catch (error) {
-    console.error("Error fetching daily order stats:", error);
+    console.error("Error fetching monthly order stats:", error);
     res.status(500).json({
-      message: "Error fetching daily order stats",
+      message: "Error fetching monthly order stats",
       error: error.message,
     });
   }

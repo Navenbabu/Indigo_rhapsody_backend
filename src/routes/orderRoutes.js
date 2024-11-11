@@ -11,7 +11,7 @@ router.get("/order/:orderId", orderController.getOrderById);
 router.post("/return-request", orderController.createReturnRequest);
 router.get("/orders/total-count", orderController.getTotalOrderCount);
 
-router.get("/daily-stats", orderController.getDailyOrderStats);
+router.get("/daily-stats", orderController.getMonthlyOrderStats);
 router.get(
   "/total-orders-by-designers",
   orderController.getTotalOrdersByDesigners
