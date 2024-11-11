@@ -147,6 +147,88 @@ exports.getTotalUserCount = async (req, res) => {
   }
 };
 
+exports.getNewUsersByCurrentMonth = async (req, res) => {
+  try {
+    const currentDate = new Date();
+    const firstDayOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    );
+
+    const newUserCount = await User.countDocuments({
+      role: "User",
+      createdTime: { $gte: firstDayOfMonth },
+    });
+
+    res.status(200).json({ newUserCount });
+  } catch (error) {
+    console.error("Error fetching new users by month:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+// Endpoint to get new users count by state (only with role "User")
+exports.getUserCountByState = async (req, res) => {
+  try {
+    const usersByState = await User.aggregate([
+      { $match: { role: "User" } }, // Filter for role "User"
+      { $group: { _id: "$state", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    res.status(200).json({ usersByState });
+  } catch (error) {
+    console.error("Error fetching users by state:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+// Endpoint to get the state with the most users (only with role "User")
+exports.getStateWithMostUsers = async (req, res) => {
+  try {
+    const mostUsersState = await User.aggregate([
+      { $match: { role: "User" } }, // Filter for role "User"
+      { $group: { _id: "$state", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 },
+    ]);
+
+    if (!mostUsersState.length) {
+      return res.status(404).json({ message: "No users found" });
+    }
+
+    res.status(200).json({ mostUsersState: mostUsersState[0] });
+  } catch (error) {
+    console.error("Error fetching state with most users:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+// Endpoint to get all users with the role "User"
+exports.getAllUsersWithRoleUser = async (req, res) => {
+  try {
+    const users = await User.find({ role: "User" }); // Filter for role "User"
+
+    if (!users.length) {
+      return res.status(404).json({ message: "No users found" });
+    }
+
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error("Error fetching users with role User:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
 // Controller to create User and Designer
 exports.createUserAndDesigner = async (req, res) => {
   const session = await User.startSession();
@@ -263,14 +345,12 @@ exports.loginDesigner = async (req, res) => {
     }
 
     // Step 5: Generate a token (optional)
-  
 
     // Step 6: Return userId, designerId, and token
     res.status(200).json({
       message: "Login successful",
       userId: user._id,
       designerId: designer._id,
-   
     });
   } catch (error) {
     console.error("Error during login:", error);
