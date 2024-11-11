@@ -450,12 +450,12 @@ exports.getMonthlyOrderStats = async (req, res) => {
     const dailyOrders = await Order.aggregate([
       {
         $match: {
-          createdAt: { $gte: startDate, $lte: endDate },
+          createdDate: { $gte: startDate, $lte: endDate },
         },
       },
       {
         $group: {
-          _id: { day: { $dayOfMonth: "$createdAt" } },
+          _id: { day: { $dayOfMonth: "$createdDate" } },
           totalOrders: { $sum: 1 },
           totalRevenue: { $sum: "$amount" },
         },
