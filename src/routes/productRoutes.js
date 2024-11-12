@@ -5,6 +5,11 @@ const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/", upload.single("file"), productController.uploadBulkProducts);
+router.post(
+  "/updateId",
+  upload.single("file"),
+  productController.updateVariantStock
+);
 router.post("/createProduct", productController.createProduct);
 
 router.get("/products", productController.getProducts);

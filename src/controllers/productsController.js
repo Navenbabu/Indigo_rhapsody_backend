@@ -369,6 +369,83 @@ exports.uploadBulkProducts = async (req, res) => {
   }
 };
 
+exports.updateVariantStock = async (req, res) => {
+  try {
+    const file = req.file; // Multer handles file upload
+
+    if (!file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // Read the Excel file from buffer
+    const workbook = xlsx.read(file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    // Iterate through each row in Excel
+    for (const row of sheetData) {
+      const { productName, color, size, stock } = row;
+
+      if (!productName || !color || !size || stock === undefined) {
+        console.error(`Invalid data in row: ${JSON.stringify(row)}`);
+        continue;
+      }
+
+      // Find the product by name (case-insensitive)
+      const product = await Product.findOne({
+        productName: new RegExp(`^${productName.trim()}$`, "i"),
+      });
+
+      if (!product) {
+        console.error(`Product not found: ${productName}`);
+        continue;
+      }
+
+      // Find the variant by color (case-insensitive)
+      const variant = product.variants.find(
+        (variant) =>
+          variant.color.trim().toLowerCase() === color.trim().toLowerCase()
+      );
+
+      if (!variant) {
+        console.error(
+          `Variant with color ${color} not found for product ${productName}`
+        );
+        continue;
+      }
+
+      // Find the size within the variant (case-insensitive)
+      const sizeEntry = variant.sizes.find(
+        (variantSize) =>
+          variantSize.size.trim().toLowerCase() === size.trim().toLowerCase()
+      );
+
+      if (!sizeEntry) {
+        console.error(
+          `Size ${size} not found for variant color ${color} in product ${productName}`
+        );
+        continue;
+      }
+
+      // Update the stock for the specified size
+      sizeEntry.stock = stock;
+
+      // Save the updated product
+      await product.save();
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Stock updated successfully for variants" });
+  } catch (error) {
+    console.error("Error updating variant stock:", error.message);
+    return res.status(500).json({
+      message: "Error updating variant stock",
+      error: error.message,
+    });
+  }
+};
+
 exports.getProducts = async (req, res) => {
   try {
     const {
