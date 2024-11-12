@@ -201,3 +201,57 @@ exports.deleteSubCategory = async (req, res) => {
       .json({ message: "Error deleting subcategory", error });
   }
 };
+
+
+exports.approveSubCategory = async (req, res) => {
+  try {
+    const { subCategoryId } = req.params;
+    const { isApproved } = req.body;
+
+    const updatedSubCategory = await SubCategory.findByIdAndUpdate(
+      subCategoryId,
+      { isApproved },
+      { new: true }
+    );
+
+    if (!updatedSubCategory) {
+      return res.status(404).json({ message: "SubCategory not found" });
+    }
+
+    return res.status(200).json({
+      message: `SubCategory ${isApproved ? "approved" : "unapproved"} successfully`,
+      updatedSubCategory,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Error updating approval status", error });
+  }
+};
+
+// 7. Get All SubCategories (with Approval Status)
+exports.getAllSubCategories = async (req, res) => {
+  try {
+    const subCategories = await SubCategory.find().populate("categoryId", "name");
+    if (!subCategories || subCategories.length === 0) {
+      return res.status(404).json({ message: "No subcategories found" });
+    }
+    return res.status(200).json({ subCategories });
+  } catch (error) {
+    return res.status(500).json({ message: "Error fetching subcategories", error });
+  }
+};
+
+// 8. Get Only Approved SubCategories
+exports.getApprovedSubCategories = async (req, res) => {
+  try {
+    const approvedSubCategories = await SubCategory.find({ isApproved: true }).populate(
+      "categoryId",
+      "name"
+    );
+    if (!approvedSubCategories || approvedSubCategories.length === 0) {
+      return res.status(404).json({ message: "No approved subcategories found" });
+    }
+    return res.status(200).json({ approvedSubCategories });
+  } catch (error) {
+    return res.status(500).json({ message: "Error fetching approved subcategories", error });
+  }
+};
