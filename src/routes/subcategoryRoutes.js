@@ -23,4 +23,6 @@ router.get(
   subcategoryController.getSubCategoriesByCategoryId
 );
 
+router.delete("/delete/:id", subcategoryController.deleteSubCategory);
+
 module.exports = router;
