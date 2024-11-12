@@ -189,9 +189,6 @@ exports.deleteSubCategory = async (req, res) => {
     }
 
     // If you want to delete the image from Firebase Storage as well
-    const fileName = subCategory.image.split("/").pop();
-    const file = bucket.file(`subcategories/${fileName}`);
-    await file.delete();
 
     return res
       .status(200)
