@@ -194,3 +194,21 @@ exports.paymentWebhook = async (req, res) => {
     return res.status(500).send("Error processing webhook.");
   }
 };
+exports.getAllPayments = async (req, res) => {
+  try {
+    // Fetch all payments from the PaymentDetails collection
+    const payments = await PaymentDetails.find();
+
+    if (!payments.length) {
+      return res.status(404).json({ message: "No payments found" });
+    }
+
+    return res.status(200).json({ payments });
+  } catch (error) {
+    console.error("Error fetching all payments:", error.message);
+    return res.status(500).json({
+      message: "Error fetching all payments",
+      error: error.message,
+    });
+  }
+};

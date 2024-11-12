@@ -13,6 +13,8 @@ router.get(
   "/transaction/:transactionId",
   paymentController.getPaymentDetailsByTransactionId
 );
+// Add this line to set up the route for getting all payments
+router.get("/payments", paymentController.getAllPayments);
 router.put(
   "/updatePaymentDetails/:paymentId",
   paymentController.updatePaymentDetails
