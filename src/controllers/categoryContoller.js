@@ -86,8 +86,6 @@ exports.deleteCategory = async (req, res) => {
     return res.status(500).json({ message: "Error deleting category", error });
   }
 };
-
-// 5. Update a category by ID
 exports.updateCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
@@ -104,50 +102,59 @@ exports.updateCategory = async (req, res) => {
 
     // Handle new image upload if a file is provided
     if (req.file) {
-      // Delete the old image from Firebase Storage
-      if (category.image) {
-        const fileName = category.image.split("/").pop();
-        const oldFile = bucket.file(`categories/${fileName}`);
-        await oldFile.delete();
-      }
+      try {
+        // Delete the old image from Firebase Storage if it exists
+        if (category.image) {
+          const fileName = category.image.split("/").pop();
+          const oldFile = bucket.file(`categories/${fileName}`);
+          await oldFile.delete();
+        }
 
-      // Upload the new image to Firebase Storage
-      const file = req.file;
-      const blob = bucket.file(`categories/${Date.now()}_${file.originalname}`);
-      const blobStream = blob.createWriteStream({
-        metadata: {
-          contentType: file.mimetype,
-        },
-      });
-
-      // Save the new image URL after upload
-      blobStream.on("finish", async () => {
-        const firebaseUrl = await blob.getSignedUrl({
-          action: "read",
-          expires: "03-09-2491", // Long expiry date
+        // Upload the new image to Firebase Storage
+        const file = req.file;
+        const blob = bucket.file(
+          `categories/${Date.now()}_${file.originalname}`
+        );
+        const blobStream = blob.createWriteStream({
+          metadata: {
+            contentType: file.mimetype,
+          },
         });
-        imageUrl = firebaseUrl[0];
 
-        // Update category with new data
-        category.name = name || category.name;
-        category.image = imageUrl;
-        await category.save();
+        // Upload the image and save the new URL
+        const uploadResult = await new Promise((resolve, reject) => {
+          blobStream.on("finish", async () => {
+            const firebaseUrl = await blob.getSignedUrl({
+              action: "read",
+              expires: "03-09-2491", // Long expiry date
+            });
+            resolve(firebaseUrl[0]);
+          });
+          blobStream.on("error", (error) => reject(error));
+          blobStream.end(req.file.buffer);
+        });
 
+        imageUrl = uploadResult;
+      } catch (err) {
+        console.error("Error uploading image:", err);
         return res
-          .status(200)
-          .json({ message: "Category updated successfully", category });
-      });
-
-      blobStream.end(req.file.buffer);
-    } else {
-      // If no new image is uploaded, just update the name
-      category.name = name || category.name;
-      await category.save();
-      return res
-        .status(200)
-        .json({ message: "Category updated successfully", category });
+          .status(500)
+          .json({ message: "Image upload failed", error: err });
+      }
     }
+
+    // Update the fields that are provided
+    category.name = name || category.name;
+    category.image = imageUrl;
+
+    await category.save();
+
+    return res
+      .status(200)
+      .json({ message: "Category updated successfully", category });
   } catch (error) {
+    console.error("Error updating category:", error);
     return res.status(500).json({ message: "Error updating category", error });
   }
 };
+
