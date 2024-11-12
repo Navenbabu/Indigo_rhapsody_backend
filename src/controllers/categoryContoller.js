@@ -5,42 +5,27 @@ const { bucket } = require("./../service/firebaseServices"); // Firebase storage
 // 1. Create a new Category
 exports.createCategory = async (req, res) => {
   try {
-    const { name } = req.body;
-    let imageUrl = "";
+    const { name, imageUrl } = req.body;
 
-    // Handle image upload to Firebase Storage
-    if (req.file) {
-      const file = req.file;
-      const blob = bucket.file(`categories/${Date.now()}_${file.originalname}`);
-      const blobStream = blob.createWriteStream({
-        metadata: {
-          contentType: file.mimetype,
-        },
-      });
-
-      blobStream.on("finish", async () => {
-        const firebaseUrl = await blob.getSignedUrl({
-          action: "read",
-          expires: "03-09-2491", // Long expiry date
-        });
-        imageUrl = firebaseUrl[0];
-
-        // Create the new category
-        const newCategory = new Category({
-          name,
-          image: imageUrl,
-        });
-
-        await newCategory.save();
-        return res
-          .status(201)
-          .json({ message: "Category created successfully", newCategory });
-      });
-
-      blobStream.end(req.file.buffer);
-    } else {
-      return res.status(400).json({ message: "Image is required" });
+    // Validate the input
+    if (!name || !imageUrl) {
+      return res
+        .status(400)
+        .json({ message: "Name and image URL are required" });
     }
+
+    // Create the new category
+    const newCategory = new Category({
+      name,
+      image: imageUrl,
+    });
+
+    await newCategory.save();
+
+    return res.status(201).json({
+      message: "Category created successfully",
+      newCategory,
+    });
   } catch (error) {
     return res.status(500).json({ message: "Error creating category", error });
   }
@@ -99,7 +84,6 @@ exports.deleteCategory = async (req, res) => {
     return res.status(500).json({ message: "Error deleting category", error });
   }
 };
-
 
 // 5. Update a category by ID
 exports.updateCategory = async (req, res) => {
