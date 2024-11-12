@@ -27,7 +27,9 @@ exports.createCategory = async (req, res) => {
       newCategory,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Error creating category", error });
+    return res
+      .status(500)
+      .json({ message: "Error creating category", error: error.message });
   }
 };
 
