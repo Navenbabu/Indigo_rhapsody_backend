@@ -16,7 +16,7 @@ router.patch(
 );
 
 // Get all subcategories
-router.get("/subcategories", subcategoryController.getAllSubCategories);
+router.get("/subcategoriesall", subcategoryController.getAllSubCategories);
 
 router.get(
   "/getSubCategoriesByCategory/:categoryId",
