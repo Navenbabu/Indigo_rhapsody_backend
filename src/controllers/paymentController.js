@@ -194,10 +194,19 @@ exports.paymentWebhook = async (req, res) => {
     return res.status(500).send("Error processing webhook.");
   }
 };
+// Controller to get all payments with user name and cart total amount populated
 exports.getAllPayments = async (req, res) => {
   try {
-    // Fetch all payments from the PaymentDetails collection
-    const payments = await PaymentDetails.find();
+    // Fetch all payments and populate user name and cart total amount
+    const payments = await PaymentDetails.find()
+      .populate({
+        path: "userId",
+        select: "displayName", // Only fetch the displayName field from User
+      })
+      .populate({
+        path: "cartId",
+        select: "total_amount", // Only fetch the totalAmount field from Cart
+      });
 
     if (!payments.length) {
       return res.status(404).json({ message: "No payments found" });
