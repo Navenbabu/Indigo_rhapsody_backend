@@ -118,6 +118,19 @@ exports.getCouponsByUser = async (req, res) => {
   }
 };
 
+exports.deleteCoupon = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedCoupon = await Coupon.findByIdAndDelete(id);
+    if (!deletedCoupon) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+    res.status(200).json({ message: "Coupon deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.applyCoupon = async (req, res) => {
   try {
     const { userId, couponCode } = req.body;
