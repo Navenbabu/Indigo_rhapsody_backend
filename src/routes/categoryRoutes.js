@@ -4,7 +4,7 @@ const categoryController = require("./../controllers/categoryContoller");
 const multer = require("multer");
 
 const upload = multer({ storage: multer.memoryStorage() });
-router.post("/", upload.single("image"), categoryController.createCategory);
+router.post("/", categoryController.createCategory);
 router.get("/", categoryController.getCategories);
 router.put(
   "/category/:categoryId",
