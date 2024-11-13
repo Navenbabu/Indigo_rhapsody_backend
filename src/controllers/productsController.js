@@ -240,13 +240,23 @@ exports.uploadBulkProducts = async (req, res) => {
         .status(400)
         .json({ message: "Designer reference is required" });
 
+    console.log("Attempting to download file from fileUrl");
+
     const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
+    console.log("File downloaded successfully");
+
     const fileBuffer = Buffer.from(response.data, "binary");
+    console.log("File buffer created");
 
     // Read the Excel file from buffer
     const workbook = xlsx.read(fileBuffer, { type: "buffer" });
+    console.log("Workbook read successfully");
+
     const sheetName = workbook.SheetNames[0];
+    console.log("Sheet name obtained:", sheetName);
+
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    console.log("Sheet data converted to JSON:", sheetData.length, "rows");
 
     const products = {};
 
