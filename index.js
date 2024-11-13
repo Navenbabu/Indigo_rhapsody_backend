@@ -22,15 +22,15 @@ const app = express();
 
 const cors = require("cors");
 const corsOptions = {
-  origin: "*", 
+  origin: "*",
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   allowedHeaders: ["Content-Type", "Authorization"],
 };
-
+app.use(cors());
+app.options("*", cors());
 connectDB();
 
 app.use(express.json());
-app.use(cors(corsOptions));
 
 app.use("/products", productRoutes);
 app.use("/category", categoryRoutes);
