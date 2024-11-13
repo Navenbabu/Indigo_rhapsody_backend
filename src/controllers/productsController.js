@@ -701,7 +701,10 @@ exports.getProductsBySubCategory = async (req, res) => {
     }
 
     // Build the query object with optional filters
-    const query = { subCategory: subCategoryId };
+    const query = {
+      subCategory: subCategoryId,
+      stock: { $gt: 0 }, // Only include products with stock greater than 0
+    };
 
     // Handle comma-separated fit values
     if (fit) {
