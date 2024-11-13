@@ -52,6 +52,46 @@ exports.getAllVideos = async (req, res) => {
     });
   }
 };
+exports.getAllVideosWithLikesAndComments = async (req, res) => {
+  try {
+    // Fetch all videos regardless of approval status
+    const videos = await ContentVideo.find()
+      .populate("userId creatorId", "displayName email") // Populate user and creator details
+      .lean(); // Convert Mongoose documents to plain JavaScript objects for easier manipulation
+
+    if (!videos.length) {
+      return res.status(404).json({ message: "No videos found." });
+    }
+
+    // Iterate over each video to fetch associated comments and add likes information
+    const videosWithLikesAndComments = await Promise.all(
+      videos.map(async (video) => {
+        // Fetch comments for the current video
+        const comments = await Comment.find({ videoId: video._id })
+          .populate("userId", "displayName email") // Populate commenter details
+          .sort({ createdAt: -1 })
+          .lean(); // Get plain objects
+
+        // Add comments and likes info to each video
+        return {
+          ...video,
+          comments,
+          likes: video.no_of_likes || 0, // Assuming no_of_likes field holds like count
+          likedBy: video.likedBy || [], // Array of user IDs who liked the video
+        };
+      })
+    );
+
+    // Send the enriched video data as a response
+    res.status(200).json({ videos: videosWithLikesAndComments });
+  } catch (error) {
+    console.error("Error fetching videos with likes and comments:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
 
 // Get videos by user ID
 exports.getVideosByUser = async (req, res) => {
