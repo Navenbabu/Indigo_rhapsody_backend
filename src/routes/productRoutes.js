@@ -7,8 +7,16 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.options("*", cors());
 
+function bypassMulter(req, res, next) {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+}
+
 router.post(
   "/",
+  bypassMulter,
   cors(),
   upload.single("file"),
   productController.uploadBulkProducts
@@ -16,6 +24,7 @@ router.post(
 router.post(
   "/updateId",
   cors(),
+  bypassMulter,
   upload.single("file"),
   productController.updateVariantStock
 );
