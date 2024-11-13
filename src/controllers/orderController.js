@@ -401,11 +401,11 @@ exports.getOrderById = async (req, res) => {
       return res.status(400).json({ message: "Invalid Order ID" });
     }
 
-    // Find the order by ObjectId
+    // Find the order by ObjectId and populate product details
     const order = await Order.findById(orderId)
       .populate({
         path: "products.productId",
-        select: "productName sku",
+        select: "productName sku variants", // Include variants to find images based on color
       })
       .populate({
         path: "userId",
@@ -416,7 +416,34 @@ exports.getOrderById = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    return res.status(200).json({ order });
+    // Customize the product details based on the color in the order
+    const customizedProducts = order.products.map((item) => {
+      const product = item.productId;
+
+      // Find the variant for the selected color
+      const selectedVariant = product.variants.find(
+        (variant) => variant.color.toLowerCase() === item.color.toLowerCase()
+      );
+
+      return {
+        productId: product._id,
+        productName: product.productName,
+        sku: product.sku,
+        color: item.color,
+        coverImage: selectedVariant ? selectedVariant.imageList[0] : null, // Use the first image in imageList if found
+        quantity: item.quantity,
+        price: item.price,
+      };
+    });
+
+    // Return the customized products within the order details
+    return res.status(200).json({
+      orderId: order._id,
+      userId: order.userId,
+      orderDate: order.orderDate,
+      products: customizedProducts,
+      totalAmount: order.totalAmount,
+    });
   } catch (error) {
     console.error("Error fetching order by ID:", error);
     return res.status(500).json({
@@ -425,7 +452,7 @@ exports.getOrderById = async (req, res) => {
     });
   }
 };
-// Endpoint to get total number of orders
+
 exports.getTotalOrderCount = async (req, res) => {
   try {
     // Count the total number of documents in the Order collection
