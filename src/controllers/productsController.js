@@ -228,7 +228,10 @@ exports.uploadSingleProduct = async (req, res) => {
 
 exports.uploadBulkProducts = async (req, res) => {
   try {
+    console.log("uploadBulkProducts called");
     const { fileUrl, designerRef } = req.body;
+    console.log("Received fileUrl:", fileUrl);
+    console.log("Received designerRef:", designerRef);
 
     if (!fileUrl)
       return res.status(400).json({ message: "No file URL provided" });
