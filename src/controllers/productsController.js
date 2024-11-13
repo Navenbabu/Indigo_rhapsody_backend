@@ -645,10 +645,13 @@ exports.getProductsById = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Get a list of available colors from the variants
-    const availableColors = product.variants.map((v) => v.color);
+    // Create availableColors array with color and imageList
+    const availableColors = product.variants.map((variant) => ({
+      color: variant.color,
+      imageList: variant.imageList || [], // Ensure imageList is included
+    }));
 
-    // Determine the selected variant based on the color query parameter
+    // Find the selected variant based on the color parameter, if provided
     let selectedVariant = null;
     if (color) {
       selectedVariant = product.variants.find(
@@ -661,7 +664,7 @@ exports.getProductsById = async (req, res) => {
           .json({ message: "Variant not found for this color" });
       }
     } else {
-      // If no color is specified, return the first variant as the default
+      // Default to the first variant if no color is specified
       selectedVariant = product.variants[0];
     }
 
@@ -678,9 +681,8 @@ exports.getProductsById = async (req, res) => {
       fabric: product.fabric,
       designerRef: product.designerRef,
       coverImage: product.coverImage,
-      availableColors: availableColors,
-      variants: product.variants, // Include all variants in the response
-      selectedVariant: selectedVariant, // Highlight the selected variant
+      availableColors: availableColors, // Include color and imageList for each variant
+      variant: selectedVariant,
     });
   } catch (error) {
     console.error("Error fetching product:", error);
