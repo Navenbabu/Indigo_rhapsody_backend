@@ -21,6 +21,8 @@ const states = require("./src/routes/stateRoutes.js");
 const app = express();
 
 const cors = require("cors");
+app.use(cors());
+
 
 app.use((req, res, next) => {
   console.log(`${req.method} request for '${req.url}'`);
