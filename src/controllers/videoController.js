@@ -382,3 +382,25 @@ exports.toggleLikeVideo = async (req, res) => {
   }
 };
 
+// Get all video requests pending approval
+exports.getAllVideoRequests = async (req, res) => {
+  try {
+    // Find all videos where is_approved is false (pending approval)
+    const videoRequests = await Video.find({ is_approved: false }).populate(
+      "userId",
+      "displayName email"
+    );
+
+    if (!videoRequests.length) {
+      return res.status(404).json({ message: "No pending video requests found" });
+    }
+
+    res.status(200).json({ videoRequests });
+  } catch (error) {
+    console.error("Error fetching video requests:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};

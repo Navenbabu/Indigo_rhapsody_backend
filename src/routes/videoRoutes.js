@@ -11,6 +11,8 @@ router.get("/videos", videoController.getAllVideos);
 // Get videos for a particular user
 router.get("/videos/user/:userId", videoController.getVideosByUser);
 
+router.get("/video-requests", videoController.getAllVideoRequests);
+
 // Update video status by admin
 router.put("/videos/:videoId/status", videoController.updateVideoStatus);
 
