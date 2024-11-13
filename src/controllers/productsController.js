@@ -228,8 +228,7 @@ exports.uploadSingleProduct = async (req, res) => {
 
 exports.uploadBulkProducts = async (req, res) => {
   try {
-    const file = req.file; // Multer handles file upload
-    const { designerRef } = req.body; // Extract designerRef from form data
+    const { fileUrl, designerRef } = req.body;
 
     if (!file) return res.status(400).json({ message: "No file uploaded" });
     if (!designerRef)
@@ -237,8 +236,11 @@ exports.uploadBulkProducts = async (req, res) => {
         .status(400)
         .json({ message: "Designer reference is required" });
 
+    const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
+    const fileBuffer = Buffer.from(response.data, "binary");
+
     // Read the Excel file from buffer
-    const workbook = xlsx.read(file.buffer, { type: "buffer" });
+    const workbook = xlsx.read(fileBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
@@ -371,17 +373,18 @@ exports.uploadBulkProducts = async (req, res) => {
 
 exports.updateVariantStock = async (req, res) => {
   try {
-    const file = req.file; // Multer handles file upload
+    const { fileUrl } = req.body; // Multer handles file upload
 
-    if (!file) {
-      return res.status(400).json({ message: "No file uploaded" });
+    if (!fileUrl) {
+      return res.status(400).json({ message: "No file URL provided" });
     }
 
+    const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
+    const fileBuffer = Buffer.from(response.data, "binary");
     // Read the Excel file from buffer
-    const workbook = xlsx.read(file.buffer, { type: "buffer" });
+    const workbook = xlsx.read(fileBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
     // Iterate through each row in Excel
     for (const row of sheetData) {
       const { productName, color, size, stock } = row;

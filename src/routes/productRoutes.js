@@ -16,16 +16,12 @@ function bypassMulter(req, res, next) {
 
 router.post(
   "/",
-  bypassMulter,
-  cors(),
-  upload.single("file"),
+
   productController.uploadBulkProducts
 );
 router.post(
   "/updateId",
-  cors(),
-  bypassMulter,
-  upload.single("file"),
+
   productController.updateVariantStock
 );
 router.post("/createProduct", productController.createProduct);
