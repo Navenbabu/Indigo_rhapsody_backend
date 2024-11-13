@@ -7,15 +7,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.use(cors());
 router.options("*", cors());
 
-function bypassMulter(req, res, next) {
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-}
-
 router.post(
-  "/",
+  "/uploadBulk",
 
   productController.uploadBulkProducts
 );
