@@ -22,12 +22,12 @@ const app = express();
 
 const cors = require("cors");
 const corsOptions = {
-  origin: "*",
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  allowedHeaders: ["Content-Type", "Authorization"],
+  origin: "http://localhost:5173", // Adjust as needed
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+  allowedHeaders: ["Content-Type", "Authorization", "designerRef"],
 };
-app.use(cors());
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 connectDB();
 
 app.use(express.json());
