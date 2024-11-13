@@ -298,14 +298,17 @@ exports.getOrders = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Find all orders for the user
-    const orders = await Order.find({ userId }).populate({
-      path: "products.productId",
-      select: "productName",
-    });
+    // Find all orders for the user and sort by newest first
+    const orders = await Order.find({ userId })
+      .sort({ createdDate: -1 }) // Sort by createdDate in descending order
+      .populate({
+        path: "products.productId",
+        select: "productName",
+      });
 
-    if (!orders.length)
+    if (!orders.length) {
       return res.status(404).json({ message: "No orders found" });
+    }
 
     return res.status(200).json({ orders });
   } catch (error) {
@@ -734,7 +737,4 @@ exports.getTotalSalesForDesigner = async (req, res) => {
   }
 };
 
-
-exports.createReturnRequestForDesigner=async(req,res)=>{
-  
-}
+exports.createReturnRequestForDesigner = async (req, res) => {};
