@@ -99,9 +99,6 @@ exports.createCart = async (req, res) => {
   }
 };
 
-// Add Item to Cart
-// Add Item to Cart
-// Add Item to Cart
 exports.addItemToCart = async (req, res) => {
   try {
     const {
@@ -410,6 +407,7 @@ exports.upsertCart = async (req, res) => {
         subtotal: 0,
         tax_amount: 0,
         discount_amount: 0,
+        discount_applied: false, // Set default value for discount_applied
         shipping_cost: 0,
         total_amount: 0,
       });
@@ -470,13 +468,19 @@ exports.upsertCart = async (req, res) => {
     const tax_amount = subtotal * 0.12;
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
+    // Apply discount if available
+    let discount_amount = 0;
+    if (cart.discount_applied) {
+      discount_amount = cart.discount_amount;
+    }
+
     // Update the cart totals
     cart.subtotal = roundToTwoDecimals(subtotal);
     cart.tax_amount = tax_amount;
     cart.shipping_cost = shipping_cost;
-
+    cart.discount_amount = roundToTwoDecimals(discount_amount);
     cart.total_amount = roundToTwoDecimals(
-      subtotal + tax_amount + shipping_cost
+      subtotal + tax_amount + shipping_cost - discount_amount
     );
 
     await cart.save();
