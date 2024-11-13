@@ -230,7 +230,8 @@ exports.uploadBulkProducts = async (req, res) => {
   try {
     const { fileUrl, designerRef } = req.body;
 
-    if (!file) return res.status(400).json({ message: "No file uploaded" });
+    if (!fileUrl)
+      return res.status(400).json({ message: "No file URL provided" });
     if (!designerRef)
       return res
         .status(400)
