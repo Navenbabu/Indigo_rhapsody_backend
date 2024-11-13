@@ -21,12 +21,7 @@ const states = require("./src/routes/stateRoutes.js");
 const app = express();
 
 const cors = require("cors");
-const corsOptions = {
-  origin: "http://localhost:5173", // Adjust as needed
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-  allowedHeaders: ["Content-Type", "Authorization", "designerRef"],
-};
-app.use(cors(corsOptions));
+
 app.use((req, res, next) => {
   console.log(`${req.method} request for '${req.url}'`);
   next();
