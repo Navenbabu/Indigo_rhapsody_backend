@@ -21,11 +21,16 @@ const states = require("./src/routes/stateRoutes.js");
 const app = express();
 
 const cors = require("cors");
+const corsOptions = {
+  origin: "*", 
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
 connectDB();
 
 app.use(express.json());
-app.use(cors());
+app.use(cors(corsOptions));
 
 app.use("/products", productRoutes);
 app.use("/category", categoryRoutes);
