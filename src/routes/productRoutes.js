@@ -4,7 +4,7 @@ const cors = require("cors");
 const productController = require("../controllers/productsController");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
-
+router.use(cors());
 router.options("*", cors());
 
 function bypassMulter(req, res, next) {

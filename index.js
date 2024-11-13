@@ -27,6 +27,10 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization", "designerRef"],
 };
 app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  console.log(`${req.method} request for '${req.url}'`);
+  next();
+});
 app.options("*", cors(corsOptions));
 connectDB();
 
