@@ -138,6 +138,11 @@ exports.ship = async (req, res) => {
         productId: product.productId._id,
       })),
       invoiceUrl: "",
+      length: length || 10,
+      breadth: breadth || 5,
+      height: height || 8,
+      weight: weight || 1.5,
+
       order_date: order.orderDate,
       pickup_location: pickup_Location || "Default Location",
     });
@@ -355,6 +360,138 @@ exports.getShippingsByDesignerRef = async (req, res) => {
       "Error fetching shipping documents by designerRef:",
       error.message
     );
+    res
+      .status(500)
+      .json({ error: "Internal Server Error", details: error.message });
+  }
+};
+
+exports.createReturnRequestForDesigner = async (req, res) => {
+  try {
+    console.log("Starting createReturnRequestForDesigner function...");
+
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      console.log("Order ID not provided");
+      return res.status(400).json({ message: "orderId is required." });
+    }
+
+    console.log("Fetching access token...");
+    const authToken = await getShiprocketToken();
+    console.log("Access token obtained:", authToken);
+
+    console.log("Fetching order details...");
+    const order = await Orders.findOne({ orderId })
+      .populate({
+        path: "products.productId",
+        select: "productName sku designerRef imageUrl",
+      })
+      .populate("userId");
+
+    if (!order) {
+      console.log("Order not found for orderId:", orderId);
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    console.log("Order details fetched successfully:", order);
+
+    // Extract designerRef from the first product
+    const designerRef = order.products[0]?.productId.designerRef || "N/A";
+
+    // Fetch designer details
+    console.log("Fetching designer details...");
+    const designer = await Designers.findOne({ _id: designerRef });
+
+    if (!designer) {
+      console.log("Designer not found for designerRef:", designerRef);
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    console.log("Designer details fetched successfully:", designer);
+
+    // Prepare the request body as per Shiprocket API requirements
+    const requestBody = {
+      order_id: order.orderId,
+      order_date: order.orderDate.toISOString().split("T")[0], // Format YYYY-MM-DD
+      channel_id: "27202", // Replace with actual channel_id if required
+      pickup_customer_name: designer.name || "Designer Name",
+      pickup_last_name: "",
+      company_name: designer.companyName || "Company Name",
+      pickup_address: designer.address?.street || "Designer Address Line 1",
+      // pickup_address_2:
+      //   designer.address?.address_2 || "Designer Address Line 2",
+      pickup_city: designer.address?.city || "Designer City",
+      pickup_state: designer.address?.state || "Designer State",
+      pickup_country: designer.address?.country || "India",
+      pickup_pincode: designer.address?.postalCode || "000000",
+      pickup_email: designer.email || "designer@example.com",
+      pickup_phone: designer.phone || "0000000000",
+      pickup_isd_code: "91",
+      shipping_customer_name: order.userId.displayName || "Customer Name",
+      // shipping_last_name: order.userId.lastName || "Customer Last Name",
+      shipping_address:
+        order.shippingDetails?.address?.street || "Customer Address Line 1",
+      // shipping_address_2:
+      //   order.shippingDetails?.address?.address_2 || "Customer Address Line 2",
+      shipping_city: order.shippingDetails?.address?.city || "Customer City",
+      shipping_country: order.shippingDetails?.address?.country || "India",
+      shipping_pincode: order.shippingDetails?.address?.postalCode || "000000",
+      shipping_state: order.shippingDetails?.address?.state || "Customer State",
+      shipping_email: order.userId.email || "customer@example.com",
+      shipping_isd_code: "91",
+      shipping_phone: order.userId.phone || "0000000000",
+      order_items: order.products.map((product) => ({
+        name: product.productId.productName,
+        qc_enable: true,
+        qc_product_name: product.productId.productName,
+        sku: product.productId.sku,
+        units: product.quantity,
+        selling_price: product.price,
+      })),
+      payment_method: order.paymentMethod || "PREPAID",
+
+      sub_total: order.amount,
+      length: order.length || 11,
+      breadth: order.breadth || 11,
+      height: order.height || 11,
+      weight: order.weight || 0.5,
+    };
+
+    console.log("Return order API request body:", requestBody);
+
+    console.log("Sending request to Shiprocket return order API...");
+    const response = await fetch(SHIPROCKET_RETURN_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const responseBody = await response.json();
+    console.log("Return order API response:", responseBody);
+
+    if (!response.ok) {
+      console.error("Failed to create return order:", responseBody);
+      return res.status(response.status).json({
+        error: responseBody.message || "Failed to create return order",
+        details: responseBody,
+      });
+    }
+
+    // Save the return order details if needed
+    // You can create a new model for return orders or update existing documents
+
+    res.status(200).json({
+      message: "Return order created successfully",
+      data: responseBody,
+    });
+
+    console.log("Finished createReturnRequestForDesigner function");
+  } catch (error) {
+    console.error("Error creating return order:", error.message);
     res
       .status(500)
       .json({ error: "Internal Server Error", details: error.message });
