@@ -401,49 +401,23 @@ exports.getOrderById = async (req, res) => {
       return res.status(400).json({ message: "Invalid Order ID" });
     }
 
-    // Find the order by ObjectId and populate product details
+    // Find the order by ObjectId
     const order = await Order.findById(orderId)
       .populate({
         path: "products.productId",
-        select: "productName sku variants", // Include variants to find images based on color
+        select: "productName sku coverImage",
       })
       .populate({
         path: "userId",
         select: "name email",
+        
       });
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Customize the product details based on the color in the order
-    const customizedProducts = order.products.map((item) => {
-      const product = item.productId;
-
-      // Find the variant for the selected color
-      const selectedVariant = product.variants.find(
-        (variant) => variant.color.toLowerCase() === item.color.toLowerCase()
-      );
-
-      return {
-        productId: product._id,
-        productName: product.productName,
-        sku: product.sku,
-        color: item.color,
-        coverImage: selectedVariant ? selectedVariant.imageList[0] : null, // Use the first image in imageList if found
-        quantity: item.quantity,
-        price: item.price,
-      };
-    });
-
-    // Return the customized products within the order details
-    return res.status(200).json({
-      orderId: order._id,
-      userId: order.userId,
-      orderDate: order.orderDate,
-      products: customizedProducts,
-      totalAmount: order.totalAmount,
-    });
+    return res.status(200).json({ order });
   } catch (error) {
     console.error("Error fetching order by ID:", error);
     return res.status(500).json({
