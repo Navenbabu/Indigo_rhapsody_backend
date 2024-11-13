@@ -210,7 +210,9 @@ exports.updateQuantity = async (req, res) => {
     if (!productInCart)
       return res.status(404).json({ message: "Product not found in cart" });
 
-    // If quantity is less than 1, remove the item from the cart
+    const quantityChange = quantity - productInCart.quantity;
+
+    // Adjust quantity or remove item if quantity is less than 1
     if (quantity < 1) {
       cart.products = cart.products.filter(
         (item) =>
@@ -221,12 +223,9 @@ exports.updateQuantity = async (req, res) => {
           )
       );
     } else {
-      const quantityChange = quantity - productInCart.quantity;
       if (quantityChange > 0 && sizeVariant.stock < quantityChange) {
         return res.status(400).json({ message: "Insufficient stock" });
       }
-
-      // Update the quantity in the cart and adjust stock
       productInCart.quantity = quantity;
       sizeVariant.stock -= quantityChange;
     }
@@ -245,7 +244,15 @@ exports.updateQuantity = async (req, res) => {
     cart.subtotal = subtotal;
     cart.tax_amount = tax_amount;
     cart.shipping_cost = shipping_cost;
-    cart.total_amount = subtotal + tax_amount + shipping_cost;
+
+    // Adjust discount if cart is cleared
+    if (cart.products.length === 0) {
+      cart.discount_applied = false;
+      cart.discount_amount = 0;
+    }
+
+    cart.total_amount =
+      subtotal + tax_amount + shipping_cost - cart.discount_amount;
 
     await cart.save();
     return res.status(200).json({ message: "Quantity updated", cart });
@@ -256,9 +263,6 @@ exports.updateQuantity = async (req, res) => {
       .json({ message: "Error updating quantity", error: error.message });
   }
 };
-
-// Delete Item from Cart and Update Stock
-// Delete Item from Cart and Update Stock
 exports.deleteItem = async (req, res) => {
   try {
     const { userId, productId, size, color } = req.body;
@@ -312,7 +316,15 @@ exports.deleteItem = async (req, res) => {
     cart.subtotal = subtotal;
     cart.tax_amount = tax_amount;
     cart.shipping_cost = shipping_cost;
-    cart.total_amount = subtotal + tax_amount + shipping_cost;
+
+    // Adjust discount if cart is cleared
+    if (cart.products.length === 0) {
+      cart.discount_applied = false;
+      cart.discount_amount = 0;
+    }
+
+    cart.total_amount =
+      subtotal + tax_amount + shipping_cost - cart.discount_amount;
 
     await cart.save();
     return res.status(200).json({ message: "Item deleted from cart", cart });
@@ -391,13 +403,13 @@ exports.upsertCart = async (req, res) => {
 
     let cart = await Cart.findOne({ userId });
 
-    // If the cart doesn't exist, create a new one
     if (!cart) {
       cart = new Cart({
         userId,
         products: [],
         subtotal: 0,
         tax_amount: 0,
+        discount_amount: 0,
         shipping_cost: 0,
         total_amount: 0,
       });
@@ -462,6 +474,7 @@ exports.upsertCart = async (req, res) => {
     cart.subtotal = roundToTwoDecimals(subtotal);
     cart.tax_amount = tax_amount;
     cart.shipping_cost = shipping_cost;
+
     cart.total_amount = roundToTwoDecimals(
       subtotal + tax_amount + shipping_cost
     );
