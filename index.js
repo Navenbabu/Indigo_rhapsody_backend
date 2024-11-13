@@ -26,7 +26,7 @@ app.use((req, res, next) => {
   console.log(`${req.method} request for '${req.url}'`);
   next();
 });
-app.options("*", cors(corsOptions));
+
 connectDB();
 
 app.use(express.json());
