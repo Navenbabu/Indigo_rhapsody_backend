@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 const fetch = require("node-fetch");
 const Orders = require("../models/orderModel");
-const Shipping = require("../models/shippingModel"); // Import the Shipping model if needed
+const Shipping = require("../models/shippingModel");
+const Designer = require("../models/designerModel"); // Import the Shipping model if needed
 
 const SHIP_API_URL =
   "https://indigorhapsodyserver.vercel.app/orders/create/adhoc";
@@ -11,6 +12,9 @@ const AUTH_API_URL = "https://indigorhapsodyserver-h9a3.vercel.app/auth/login";
 
 const MANIFEST_API_URL =
   "https://indigorhapsodyserver-h9a3.vercel.app/courier/generate/label";
+
+const SHIPROCKET_RETURN_API_URL =
+  "https://apiv2.shiprocket.in/v1/external/orders/create/return";
 exports.ship = async (req, res) => {
   try {
     console.log("Starting ship function...");
@@ -370,19 +374,44 @@ exports.createReturnRequestForDesigner = async (req, res) => {
   try {
     console.log("Starting createReturnRequestForDesigner function...");
 
-    const { orderId } = req.body;
+    const { returnId, designerRef } = req.body; // Get returnId from request body
 
-    if (!orderId) {
-      console.log("Order ID not provided");
-      return res.status(400).json({ message: "orderId is required." });
+    // Validate required fields
+    if (!returnId) {
+      console.log("Return ID not provided");
+      return res.status(400).json({ message: "returnId is required." });
+    }
+
+    // Define getShiprocketToken function if not already defined
+    async function getShiprocketToken() {
+      const authResponse = await fetch(AUTH_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "rajatjiedm@gmail.com", // Replace with your actual email
+          password: "Raaxas12#", // Replace with your actual password
+        }),
+      });
+
+      const authBody = await authResponse.json();
+
+      if (!authResponse.ok) {
+        console.error("Failed to get access token:", authBody);
+        throw new Error(authBody.message || "Failed to get access token");
+      }
+
+      return authBody.token; // Return the token for use in other API calls
     }
 
     console.log("Fetching access token...");
     const authToken = await getShiprocketToken();
     console.log("Access token obtained:", authToken);
 
+    // Find the order containing the product with the given returnId
     console.log("Fetching order details...");
-    const order = await Orders.findOne({ orderId })
+    const order = await Orders.findOne({ "products.returnId": returnId })
       .populate({
         path: "products.productId",
         select: "productName sku designerRef imageUrl",
@@ -390,18 +419,40 @@ exports.createReturnRequestForDesigner = async (req, res) => {
       .populate("userId");
 
     if (!order) {
-      console.log("Order not found for orderId:", orderId);
-      return res.status(404).json({ message: "Order not found" });
+      console.log("Order not found for returnId:", returnId);
+      return res
+        .status(404)
+        .json({ message: "Order not found for the provided returnId." });
     }
 
     console.log("Order details fetched successfully:", order);
 
-    // Extract designerRef from the first product
-    const designerRef = order.products[0]?.productId.designerRef || "N/A";
+    // Find the product with the given returnId
+    const product = order.products.find((prod) => prod.returnId === returnId);
+
+    if (!product) {
+      console.log("Product not found with returnId:", returnId);
+      return res
+        .status(404)
+        .json({ message: "Product not found with the provided returnId." });
+    }
+
+    console.log("Product details fetched successfully:", product);
+
+    // Extract designerRef from the product
+
+    if (!designerRef) {
+      console.log("DesignerRef not found in product");
+      return res
+        .status(404)
+        .json({ message: "DesignerRef not found in product" });
+    }
 
     // Fetch designer details
     console.log("Fetching designer details...");
-    const designer = await Designers.findOne({ _id: designerRef });
+    const designer = await Designer.findOne({ _id: designerRef }).populate(
+      "userId"
+    );
 
     if (!designer) {
       console.log("Designer not found for designerRef:", designerRef);
@@ -410,52 +461,62 @@ exports.createReturnRequestForDesigner = async (req, res) => {
 
     console.log("Designer details fetched successfully:", designer);
 
+    // Fetch the Shipping document to get dimensions
+    console.log("Fetching shipping details...");
+    const shippingDoc = await Shipping.findOne({ order_id: order.orderId });
+
+    if (!shippingDoc) {
+      console.log("Shipping document not found for orderId:", order.orderId);
+      return res.status(404).json({ message: "Shipping details not found" });
+    }
+
+    console.log("Shipping details fetched successfully:", shippingDoc);
+
     // Prepare the request body as per Shiprocket API requirements
     const requestBody = {
-      order_id: order.orderId,
-      order_date: order.orderDate.toISOString().split("T")[0], // Format YYYY-MM-DD
-      channel_id: "27202", // Replace with actual channel_id if required
-      pickup_customer_name: designer.name || "Designer Name",
-      pickup_last_name: "",
-      company_name: designer.companyName || "Company Name",
-      pickup_address: designer.address?.street || "Designer Address Line 1",
-      // pickup_address_2:
-      //   designer.address?.address_2 || "Designer Address Line 2",
-      pickup_city: designer.address?.city || "Designer City",
-      pickup_state: designer.address?.state || "Designer State",
-      pickup_country: designer.address?.country || "India",
-      pickup_pincode: designer.address?.postalCode || "000000",
-      pickup_email: designer.email || "designer@example.com",
-      pickup_phone: designer.phone || "0000000000",
-      pickup_isd_code: "91",
-      shipping_customer_name: order.userId.displayName || "Customer Name",
-      // shipping_last_name: order.userId.lastName || "Customer Last Name",
-      shipping_address:
-        order.shippingDetails?.address?.street || "Customer Address Line 1",
-      // shipping_address_2:
-      //   order.shippingDetails?.address?.address_2 || "Customer Address Line 2",
-      shipping_city: order.shippingDetails?.address?.city || "Customer City",
-      shipping_country: order.shippingDetails?.address?.country || "India",
-      shipping_pincode: order.shippingDetails?.address?.postalCode || "000000",
-      shipping_state: order.shippingDetails?.address?.state || "Customer State",
-      shipping_email: order.userId.email || "customer@example.com",
-      shipping_isd_code: "91",
-      shipping_phone: order.userId.phone || "0000000000",
-      order_items: order.products.map((product) => ({
-        name: product.productId.productName,
-        qc_enable: true,
-        qc_product_name: product.productId.productName,
-        sku: product.productId.sku,
-        units: product.quantity,
-        selling_price: product.price,
-      })),
-      payment_method: order.paymentMethod || "PREPAID",
+      order_id: returnId, // Use returnId as order_id for the return request
+      order_date: new Date().toISOString().split("T")[0], // Current date in YYYY-MM-DD format
 
-      sub_total: order.amount,
-      length: order.length || 11,
-      breadth: order.breadth || 11,
-      height: order.height || 11,
-      weight: order.weight || 0.5,
+      // Pickup (from Customer)
+      pickup_customer_name: order.userId.displayName || "Customer Name",
+      pickup_last_name: "", // Add if available
+      pickup_address:
+        order.shippingDetails?.address?.street || "Customer Address Line 1",
+      pickup_city: order.shippingDetails?.address?.city || "Customer City",
+      pickup_state: order.shippingDetails?.address?.state || "Customer State",
+      pickup_pincode: order.userId.pincode || "000000",
+      pickup_email: order.userId.email || "customer@example.com",
+      pickup_phone: order.userId.phoneNumber || "0000000000",
+      pickup_isd_code: "91",
+      pickup_country: "India",
+
+      // Shipping (to Designer)
+      shipping_customer_name: designer.userId.name || "Designer Name",
+
+      shipping_address: designer.userId.address || "Designer Address Line 1",
+      shipping_city: designer.userId.city || "Designer City",
+      shipping_state: designer.userId.state || "Designer State",
+      shipping_pincode: designer.userId.pincode || "000000",
+      shipping_email: designer.email || "designer@example.com",
+      shipping_phone: designer.phoneNumber || "0000000000",
+      shipping_isd_code: "91",
+      shipping_country: "India",
+
+      order_items: [
+        {
+          name: product.productName,
+
+          sku: product.sku,
+          units: product.quantity,
+          selling_price: product.price,
+        },
+      ],
+      payment_method: order.paymentMethod || "PREPAID",
+      sub_total: product.price * product.quantity,
+      length: shippingDoc.length || 11,
+      breadth: shippingDoc.breadth || 11,
+      height: shippingDoc.height || 11,
+      weight: shippingDoc.weight || 0.5,
     };
 
     console.log("Return order API request body:", requestBody);
@@ -481,8 +542,9 @@ exports.createReturnRequestForDesigner = async (req, res) => {
       });
     }
 
-    // Save the return order details if needed
-    // You can create a new model for return orders or update existing documents
+    // Update the product's returnStatus and save the order
+    product.returnStatus = "Return Initiated";
+    await order.save();
 
     res.status(200).json({
       message: "Return order created successfully",
