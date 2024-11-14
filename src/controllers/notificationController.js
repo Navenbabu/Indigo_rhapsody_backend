@@ -1,8 +1,26 @@
 const Notifications = require("../models/notificationsModel");
 const User = require("../models/userModel");
+const admin = require("../config/firebaseService");
 
 // Create a new order notification
+ exports.sendFcmNotification = async (fcmToken, title, body) => {
+  try {
+    const message = {
+      notification: {
+        title,
+        body,
+      },
+      token: fcmToken,
+    };
 
+    const response = await admin.messaging().send(message);
+    console.log("Notification sent successfully:", response);
+    return response;
+  } catch (error) {
+    console.error("Error sending FCM notification:", error.message);
+    throw error;
+  }
+};
 exports.createNotification = async ({
   userId,
   designeref,

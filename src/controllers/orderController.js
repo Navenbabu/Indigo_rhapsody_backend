@@ -214,6 +214,16 @@ exports.createOrder = async (req, res) => {
           }
         }
 
+        if (fcmToken) {
+          await sendFcmNotification(
+            fcmToken,
+            "Order Placed Successfully",
+            `Your order with ID ${order.orderId} has been placed successfully.`
+          );
+        } else {
+          console.warn("User has no FCM token, notification not sent.");
+        }
+
         return res.status(201).json({
           message:
             "Order created, email sent, and notifications created successfully",
@@ -410,7 +420,6 @@ exports.getOrderById = async (req, res) => {
       .populate({
         path: "userId",
         select: "name email",
-        
       });
 
     if (!order) {
