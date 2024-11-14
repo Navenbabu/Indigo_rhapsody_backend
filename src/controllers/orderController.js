@@ -176,6 +176,7 @@ exports.createOrder = async (req, res) => {
 
     // Clear the user's cart
     cart.products = [];
+    cart.discount_amount = 0;
     await cart.save();
 
     const designerEmails = new Set();
