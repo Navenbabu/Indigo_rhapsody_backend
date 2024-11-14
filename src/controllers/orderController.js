@@ -167,7 +167,7 @@ exports.createOrder = async (req, res) => {
       notes,
       tax_amount,
       shipping_cost,
-      discount_amount,
+      discount_amount: cart.discount_amount,
       subtotal,
       orderId: `ORD-${Date.now()}`,
     });
