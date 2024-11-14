@@ -1,6 +1,6 @@
 const Notifications = require("../models/notificationsModel");
 const User = require("../models/userModel");
-const admin = require("../config/firebaseService");
+const {admin} = require("../config/firebaseService");
 
 // Create a new order notification
  exports.sendFcmNotification = async (fcmToken, title, body) => {
