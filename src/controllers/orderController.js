@@ -22,6 +22,30 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
+  const mailOptions = {
+    from: "sveccha.apps@gmail.com",
+    to: designerEmail,
+    subject: "New Order Notification",
+    html: `
+      <h1>New Order Available</h1>
+      <p>Congratulations!A new order has been created that includes products designed by you.</p>
+      <h2>Order Details</h2>
+      <ul>
+        ${orderDetails
+          .map(
+            (product) =>
+              `<li>${product.productName} - ${product.quantity} x $${product.price}</li>`
+          )
+          .join("")}
+      </ul>
+      <p>Please log in to your dashboard to view and manage this order.</p>
+    `,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
 // Helper function to generate and upload PDF to Firebase
 const generateAndUploadInvoice = async (order) => {
   return new Promise((resolve, reject) => {
@@ -153,6 +177,21 @@ exports.createOrder = async (req, res) => {
     // Clear the user's cart
     cart.products = [];
     await cart.save();
+
+    const designerEmails = new Set();
+    for (const product of orderProducts) {
+      const designer = await User.findById(product.designerRef).select("email");
+      if (designer) designerEmails.add(designer.email);
+    }
+
+    // Send email notification to each designer
+    designerEmails.forEach(async (email) => {
+      try {
+        await notifyDesignerByEmail(email, orderProducts);
+      } catch (error) {
+        console.error(`Error sending email to designer ${email}:`, error);
+      }
+    });
 
     const email = user.email;
 
