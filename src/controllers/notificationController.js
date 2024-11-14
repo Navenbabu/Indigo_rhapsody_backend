@@ -1,4 +1,5 @@
 const Notifications = require("../models/notificationsModel");
+const User = require("../models/userModel");
 
 // Create a new order notification
 
