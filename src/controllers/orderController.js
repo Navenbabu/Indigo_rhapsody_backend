@@ -118,7 +118,7 @@ exports.createOrder = async (req, res) => {
         city: user.city,
         state: user.state,
         pincode: user.pincode,
-        country: user.country || "Default Country",
+        country: "India",
       },
       phoneNumber: user.phoneNumber,
     };
@@ -167,7 +167,7 @@ exports.createOrder = async (req, res) => {
       notes,
       tax_amount,
       shipping_cost,
-      discount_amount: discount_amount,
+      discountAmount: discount_amount,
       subtotal,
       orderId: `ORD-${Date.now()}`,
     });
