@@ -5,6 +5,7 @@ const {
   getAllNotifications,
   getNotificationByDesigner,
   createReturnNotification,
+  updateFcmToken,
 } = require("../controllers/notificationController");
 
 router.put("/update-fcm-token", updateFcmToken);
