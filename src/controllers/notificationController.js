@@ -99,6 +99,45 @@ exports.getNotificationByDesigner = async (req, res) => {
   }
 };
 
+exports.updateFcmToken = async (req, res) => {
+  try {
+    const { userId, fcmToken } = req.body;
+
+    if (!userId || !fcmToken) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID and FCM token are required",
+      });
+    }
+
+    // Update user's FCM token
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { fcmToken },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "FCM token updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error updating FCM token",
+      error: error.message,
+    });
+  }
+};
+
 // Create a new return notification
 exports.createReturnNotification = async (req, res) => {
   try {

@@ -7,6 +7,8 @@ const {
   createReturnNotification,
 } = require("../controllers/notificationController");
 
+router.put("/update-fcm-token", updateFcmToken);
+
 // Route to create a new order notification
 router.post("/create-order-notification", createOrderNotification);
 
