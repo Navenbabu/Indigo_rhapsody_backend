@@ -2,7 +2,10 @@ const mongoose = require("mongoose");
 const fetch = require("node-fetch");
 const Orders = require("../models/orderModel");
 const Shipping = require("../models/shippingModel");
-const Designer = require("../models/designerModel"); // Import the Shipping model if needed
+const Designer = require("../models/designerModel");
+const {
+  sendFcmNotification,
+} = require("../controllers/notificationController"); // Import the Shipping model if needed
 
 const SHIP_API_URL =
   "https://indigorhapsodyserver.vercel.app/orders/create/adhoc";
@@ -181,6 +184,19 @@ exports.ship = async (req, res) => {
     order.invoiceUrl = invoiceBody.invoice_url;
     await order.save();
     console.log("Invoice URL updated in Order document");
+
+    const fcmToken = order.userId.fcmToken;
+    if (fcmToken) {
+      const numOfItems = order.products.length;
+      await sendFcmNotification(
+        fcmToken,
+        "Your Order Has Been Shipped",
+        `Your order with ID ${order.orderId} containing ${numOfItems} items has been shipped.`
+      );
+      console.log("Notification sent to user for shipped items");
+    } else {
+      console.warn("User has no FCM token, notification not sent.");
+    }
 
     res.status(200).json({
       message: "Shipping order created successfully",

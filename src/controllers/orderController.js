@@ -283,12 +283,10 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// Get Orders by Designer Reference
 exports.getOrdersByDesignerRef = async (req, res) => {
   try {
     const { designerRef } = req.params;
 
-    // Query the orders collection to find orders with products matching the designerRef
     const orders = await Order.find({
       "products.designerRef": designerRef,
     })
