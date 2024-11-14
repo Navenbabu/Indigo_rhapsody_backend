@@ -30,6 +30,32 @@ exports.createVideo = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+exports.approveVideo = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+
+    // Find the video by ID and update the is_approved field to true
+    const video = await ContentVideo.findByIdAndUpdate(
+      videoId,
+      { is_approved: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    res.status(200).json({
+      message: "Video approved successfully",
+      video,
+    });
+  } catch (error) {
+    console.error("Error approving video:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
 
 // Get all videos (approved only)
 exports.getAllVideos = async (req, res) => {

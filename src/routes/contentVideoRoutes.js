@@ -11,5 +11,6 @@ router.delete("/videos/:videoId", videoController.deleteVideo);
 router.post("/videos/:videoId/like", videoController.toggleLikeVideo);
 router.post("/comments", videoController.createComment); // Create a comment
 router.get("/videos/:videoId/comments", videoController.getCommentsByVideo);
+router.patch("/videos/:videoId/approve", videoController.approveVideo);
 
 module.exports = router;

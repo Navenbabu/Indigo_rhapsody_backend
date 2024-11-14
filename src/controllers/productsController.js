@@ -248,7 +248,7 @@ exports.uploadBulkProducts = async (req, res) => {
     const fileBuffer = Buffer.from(response.data, "binary");
     console.log("File buffer created");
 
-    // Read the Excel file from buffer
+
     const workbook = xlsx.read(fileBuffer, { type: "buffer" });
     console.log("Workbook read successfully");
 
@@ -260,7 +260,7 @@ exports.uploadBulkProducts = async (req, res) => {
 
     const products = {};
 
-    // Iterate through each row in Excel
+  
     for (const row of sheetData) {
       const categoryDoc = await Category.findOneAndUpdate(
         { name: row.category },
@@ -276,7 +276,7 @@ exports.uploadBulkProducts = async (req, res) => {
 
       const productName = row.productName.trim().toLowerCase();
 
-      // Initialize product if it doesn't already exist
+ 
       if (!products[productName]) {
         let imageList = [];
         let coverImageFirebaseUrl = "";
