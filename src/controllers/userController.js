@@ -317,9 +317,10 @@ exports.createUserAndDesigner = async (req, res) => {
     });
   }
 };
+
 exports.loginDesigner = async (req, res) => {
   try {
-    const { email, password, fcmToken } = req.body; // Get fcmToken from request
+    const { email, password } = req.body;
 
     // Step 1: Find the user by email
     const user = await User.findOne({ email });
@@ -343,15 +344,9 @@ exports.loginDesigner = async (req, res) => {
       return res.status(404).json({ message: "Designer profile not found" });
     }
 
-    // Step 5: Update the user's FCM token
-    if (fcmToken) {
-      user.fcmToken = fcmToken;
-      await user.save(); // Save the FCM token in the user's record
-    }
+    // Step 5: Generate a token (optional)
 
-    // Step 6: Generate a token (optional, e.g., JWT)
-
-    // Step 7: Return userId, designerId, and token
+    // Step 6: Return userId, designerId, and token
     res.status(200).json({
       message: "Login successful",
       userId: user._id,
