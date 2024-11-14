@@ -7,7 +7,10 @@ const fs = require("fs");
 const PDFDocument = require("pdfkit"); // To generate PDF invoices
 const nodemailer = require("nodemailer");
 const { bucket } = require("../service/firebaseServices");
-const { createNotification } = require("../controllers/notificationController");
+const {
+  createNotification,
+  sendFcmNotification,
+} = require("../controllers/notificationController");
 
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
