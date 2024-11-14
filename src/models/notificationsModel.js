@@ -9,7 +9,7 @@ const notificationsSchema = new mongoose.Schema({
   designeref: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Designer",
-    required: true,
+    // required: true,
   },
   message: {
     type: String,
@@ -18,6 +18,9 @@ const notificationsSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     default: Date.now,
+  },
+  title: {
+    type: String,
   },
   seen: {
     type: Boolean,

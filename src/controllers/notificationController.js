@@ -1,9 +1,9 @@
 const Notifications = require("../models/notificationsModel");
 const User = require("../models/userModel");
-const {admin} = require("../config/firebaseService");
+const { admin } = require("../config/firebaseService");
 
 // Create a new order notification
- exports.sendFcmNotification = async (fcmToken, title, body) => {
+exports.sendFcmNotification = async (fcmToken, title, body) => {
   try {
     const message = {
       notification: {
@@ -63,6 +63,54 @@ exports.createOrderNotification = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error creating order notification",
+      error: error.message,
+    });
+  }
+};
+
+exports.getLatestBroadcastNotification = async (req, res) => {
+  try {
+    const latestNotification = await Notifications.findOne({
+      userId: null, // Filter for broadcast notifications without specific userId
+    }).sort({ createdDate: -1 }); // Sort by createdDate to get the latest
+
+    if (!latestNotification) {
+      return res.status(404).json({
+        success: false,
+        message: "No broadcast notifications found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Latest broadcast notification retrieved successfully",
+      data: latestNotification,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving broadcast notification",
+      error: error.message,
+    });
+  }
+};
+
+// Get all broadcast notifications
+exports.getAllBroadcastNotifications = async (req, res) => {
+  try {
+    const notifications = await Notifications.find({
+      userId: null, // Filter for broadcast notifications without specific userId
+    }).sort({ createdDate: -1 }); // Sort by createdDate to get in reverse chronological order
+
+    res.status(200).json({
+      success: true,
+      message: "All broadcast notifications retrieved successfully",
+      data: notifications,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving broadcast notifications",
       error: error.message,
     });
   }
@@ -152,6 +200,69 @@ exports.updateFcmToken = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error updating FCM token",
+      error: error.message,
+    });
+  }
+};
+exports.sendNotificationToAllUsers = async (req, res) => {
+  try {
+    const { title, body, image } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and body are required",
+      });
+    }
+
+    // Fetch all users with an FCM token
+    const usersWithFcmTokens = await User.find({
+      fcmToken: { $exists: true, $ne: null },
+    }).select("fcmToken");
+
+    if (!usersWithFcmTokens.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No users with FCM tokens found",
+      });
+    }
+
+    // Prepare the FCM message with optional image
+    const message = {
+      notification: {
+        title,
+        body,
+        image, // optional field for image in notification
+      },
+    };
+
+    // Send the notification to each user with an FCM token
+    const sendPromises = usersWithFcmTokens.map(async (user) => {
+      const userMessage = { ...message, token: user.fcmToken };
+      await admin.messaging().send(userMessage);
+    });
+
+    await Promise.all(sendPromises);
+
+    // Save a single notification document in the database for record-keeping
+    const newNotification = new Notifications({
+      title,
+      message: body,
+      image: image || null,
+    });
+
+    await newNotification.save();
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Notification sent to all users and saved in the database successfully",
+      data: newNotification,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error sending notifications to all users",
       error: error.message,
     });
   }
