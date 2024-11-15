@@ -4,6 +4,7 @@ const { bucket } = require("../service/firebaseServices");
 const { admin } = require("../service/firebaseServices");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const AUTH_API_URL = "https://indigorhapsodyserver-h9a3.vercel.app/auth/login";
 
 // Create a new user
 exports.createUser = async (req, res) => {
