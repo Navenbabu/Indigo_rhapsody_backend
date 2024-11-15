@@ -302,7 +302,7 @@ exports.generateManifest = async (req, res) => {
     // Update the Shipping document with the manifest URL if available
     const shippingDoc = await Shipping.findOneAndUpdate(
       { shipmentId: shipment_id },
-      { manifestUrl: manifestBody.manifest_url }, // Adjust based on actual response structure
+      { invoiceUrl: manifestBody.label_url }, // Adjust based on actual response structure
       { new: true } // Return the updated document
     );
 
