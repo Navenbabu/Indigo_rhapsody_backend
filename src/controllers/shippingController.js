@@ -29,6 +29,16 @@ exports.ship = async (req, res) => {
       return res.status(400).json({ message: "orderId is required." });
     }
 
+    console.log("Checking if shipping already exists for orderId...");
+    const existingShipping = await Shipping.findOne({ order_id: orderId });
+    if (existingShipping) {
+      console.log("Shipping already exists for this orderId:", orderId);
+      return res.status(400).json({
+        message: "Shipping has already been created for this orderId.",
+        data: existingShipping,
+      });
+    }
+
     console.log("Fetching access token...");
     const authResponse = await fetch(AUTH_API_URL, {
       method: "POST",
@@ -126,7 +136,7 @@ exports.ship = async (req, res) => {
       });
     }
 
-    const { shipment_id, status, order_id } = responseBody;
+    const { shipment_id, status } = responseBody;
     console.log("Shipping created successfully with shipment ID:", shipment_id);
 
     order.products.forEach((product) => {
@@ -149,59 +159,16 @@ exports.ship = async (req, res) => {
       breadth: breadth || 5,
       height: height || 8,
       weight: weight || 1.5,
-
       order_date: order.orderDate,
       pickup_location: pickup_Location || "Default Location",
     });
 
-    console.log("Generating invoice...");
-    const invoiceRequestBody = {
-      shipment_id: [shipment_id],
-    };
-
-    console.log("Invoice request body:", invoiceRequestBody);
-    const invoiceResponse = await fetch(INVOICE_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify(invoiceRequestBody),
-    });
-
-    const invoiceBody = await invoiceResponse.json();
-    console.log("Invoice API response:", invoiceBody);
-
-    if (!invoiceResponse.ok) {
-      console.error("Failed to generate invoice:", invoiceBody);
-      return res.status(invoiceResponse.status).json(invoiceBody);
-    }
-
-    shippingDoc.invoiceUrl = invoiceBody.invoice_url;
+    console.log("Saving Shipping document...");
     await shippingDoc.save();
-    console.log("Invoice URL saved in Shipping document");
-
-    order.invoiceUrl = invoiceBody.invoice_url;
-    await order.save();
-    console.log("Invoice URL updated in Order document");
-
-    const fcmToken = order.userId.fcmToken;
-    if (fcmToken) {
-      const numOfItems = order.products.length;
-      await sendFcmNotification(
-        fcmToken,
-        "Your Order Has Been Shipped",
-        `Your order with ID ${order.orderId} containing ${numOfItems} items has been shipped.`
-      );
-      console.log("Notification sent to user for shipped items");
-    } else {
-      console.warn("User has no FCM token, notification not sent.");
-    }
 
     res.status(200).json({
       message: "Shipping order created successfully",
       data: responseBody,
-      invoiceUrl: invoiceBody.invoice_url,
     });
     console.log("Finished ship function");
   } catch (error) {
