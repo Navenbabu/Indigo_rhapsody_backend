@@ -542,3 +542,109 @@ exports.createReturnRequestForDesigner = async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
+exports.addPickupLocation = async (req, res) => {
+  try {
+    const {
+      pickup_location,
+      name,
+      email,
+      phone,
+      address,
+      address_2,
+      city,
+      state,
+      country,
+      pin_code,
+    } = req.body;
+
+    // Validate required fields
+    if (
+      !pickup_location ||
+      !name ||
+      !email ||
+      !phone ||
+      !address ||
+      !city ||
+      !state ||
+      !country ||
+      !pin_code
+    ) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    // Fetch access token
+    console.log("Fetching access token...");
+    const authResponse = await fetch(AUTH_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: "rajatjiedm@gmail.com", // Replace with actual credentials
+        password: "Raaxas12#", // Replace with actual credentials
+      }),
+    });
+
+    const authBody = await authResponse.json();
+
+    if (!authResponse.ok) {
+      console.error("Failed to get access token:", authBody);
+      return res.status(authResponse.status).json({
+        error: authBody.message || "Failed to get access token",
+      });
+    }
+
+    const authToken = authBody.token; // Extract the token from the response
+    console.log("Access token obtained:", authToken);
+
+    // Prepare the request body
+    const requestBody = {
+      pickup_location,
+      name,
+      email,
+      phone,
+      address,
+      address_2: address_2 || "",
+      city,
+      state,
+      country,
+      pin_code,
+    };
+
+    console.log("Sending request to Shiprocket add pickup API...");
+    const response = await fetch(
+      "https://apiv2.shiprocket.in/v1/external/settings/company/addpickup",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    const responseBody = await response.json();
+    console.log("Shiprocket add pickup API response:", responseBody);
+
+    if (!response.ok) {
+      console.error("Failed to add pickup location:", responseBody);
+      return res.status(response.status).json({
+        error: responseBody.message || "Failed to add pickup location",
+        details: responseBody,
+      });
+    }
+
+    res.status(200).json({
+      message: "Pickup location added successfully",
+      data: responseBody,
+    });
+
+    console.log("Finished addPickupLocation function");
+  } catch (error) {
+    console.error("Error adding pickup location:", error.message);
+    res
+      .status(500)
+      .json({ error: "Internal Server Error", details: error.message });
+  }
+};

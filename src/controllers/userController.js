@@ -248,8 +248,8 @@ exports.createUserAndDesigner = async (req, res) => {
       is_creator,
       shortDescription,
       about,
-      logoUrl, // Logo URL passed in body
-      backgroundImageUrl, // Background image URL passed in body
+      logoUrl,
+      backgroundImageUrl,
     } = req.body;
 
     // Check if user already exists in MongoDB
@@ -287,34 +287,100 @@ exports.createUserAndDesigner = async (req, res) => {
 
     await newUser.save({ session });
 
-    // Step 3: Create Designer Document using the image URLs from the request body
+    // Step 3: Create Designer Document
     const newDesigner = new Designer({
       userId: newUser._id,
-      logoUrl: logoUrl || null, // Use provided logo URL or null
-      backGroundImage: backgroundImageUrl || null, // Use provided background image URL or null
+      logoUrl: logoUrl || null,
+      backGroundImage: backgroundImageUrl || null,
       shortDescription,
       about,
     });
 
     await newDesigner.save({ session });
 
-    // Commit transaction
+    // Commit transaction before calling external API
     await session.commitTransaction();
     session.endSession();
 
+    // Call addPickupLocation API
+    const addPickupResponse = await addPickupLocation({
+      pickup_location: "Default Location",
+      name: displayName,
+      email,
+      phone: phoneNumber,
+      address,
+      address_2: "", // Additional address line, if any
+      city,
+      state,
+      country: "India",
+      pin_code: pincode,
+    });
+
     res.status(201).json({
-      message: "User and Designer created successfully",
+      message: "User, Designer, and Pickup Location created successfully",
       user: newUser,
       designer: newDesigner,
+      pickupResponse: addPickupResponse,
     });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error("Error creating user and designer:", error);
+    console.error("Error creating user, designer, or pickup location:", error);
     res.status(500).json({
       message: "Internal Server Error",
       error: error.message,
     });
+  }
+};
+
+// AddPickupLocation function
+const addPickupLocation = async (pickupDetails) => {
+  try {
+    // Fetch access token
+    const authResponse = await fetch(AUTH_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: "rajatjiedm@gmail.com", // Replace with actual credentials
+        password: "Raaxas12#", // Replace with actual credentials
+      }),
+    });
+
+    const authBody = await authResponse.json();
+
+    if (!authResponse.ok) {
+      console.error("Failed to get access token:", authBody);
+      throw new Error(authBody.message || "Failed to get access token");
+    }
+
+    const authToken = authBody.token;
+
+    // Send request to Shiprocket API
+    const response = await fetch(
+      "https://apiv2.shiprocket.in/v1/external/settings/company/addpickup",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(pickupDetails),
+      }
+    );
+
+    const responseBody = await response.json();
+
+    if (!response.ok) {
+      console.error("Failed to add pickup location:", responseBody);
+      throw new Error(responseBody.message || "Failed to add pickup location");
+    }
+
+    return responseBody;
+  } catch (error) {
+    console.error("Error adding pickup location:", error);
+    throw error;
   }
 };
 
