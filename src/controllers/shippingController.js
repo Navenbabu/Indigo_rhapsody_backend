@@ -96,7 +96,7 @@ exports.ship = async (req, res) => {
       billing_state: order.shippingDetails?.address?.state || "N/A",
       billing_country: order.shippingDetails?.address?.country || "N/A",
       billing_email: order.userId.email || "example@example.com",
-      billing_phone: "+919560360744",
+      billing_phone: order.userId.phoneNumber,
       shipping_is_billing: true,
       order_items: order.products.map((product) => ({
         name: product.productId.productName,
