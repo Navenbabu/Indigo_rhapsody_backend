@@ -17,4 +17,5 @@ router.put("/:userId", userController.updateUser);
 // User and Designer creation/login
 router.post("/user-designer", userController.createUserAndDesigner);
 router.post("/login", userController.loginDesigner);
+router.post("/adminLogin", userController.loginAdmin);
 module.exports = router;

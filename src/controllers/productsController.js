@@ -645,10 +645,10 @@ exports.getProductsById = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Create availableColors array with color and imageList
+    // Create availableColors array with color and a single image
     const availableColors = product.variants.map((variant) => ({
       color: variant.color,
-      imageList: variant.imageList || [], // Ensure imageList is included
+      image: variant.imageList && variant.imageList.length > 0 ? variant.imageList[0] : null,
     }));
 
     // Find the selected variant based on the color parameter, if provided
@@ -681,7 +681,7 @@ exports.getProductsById = async (req, res) => {
       fabric: product.fabric,
       designerRef: product.designerRef,
       coverImage: product.coverImage,
-      availableColors: availableColors, // Include color and imageList for each variant
+      availableColors: availableColors, // Now includes color and single image
       variant: selectedVariant,
     });
   } catch (error) {
@@ -692,6 +692,7 @@ exports.getProductsById = async (req, res) => {
     });
   }
 };
+
 
 exports.getProductsBySubCategory = async (req, res) => {
   try {
