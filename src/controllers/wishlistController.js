@@ -31,7 +31,9 @@ const toggleWishlistItem = async (req, res) => {
       // If the product doesn't exist, add it to the wishlist
       const newWishlistItem = new Wishlist({ userId, productId });
       await newWishlistItem.save();
-      return res.status(201).json({ message: "Product added to wishlist" });
+      return res
+        .status(201)
+        .json({ message: "Product added to wishlist", productId });
     }
   } catch (error) {
     res.status(500).json({ error: "Error toggling wishlist item" });

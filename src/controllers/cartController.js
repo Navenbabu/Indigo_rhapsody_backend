@@ -423,10 +423,12 @@ exports.upsertCart = async (req, res) => {
 
     const sizeVariant = variant.sizes.find((s) => s.size === size);
     if (!sizeVariant)
-      return res.status(404).json({ message: "Size not found" });
+      return res.status(404).json({ message: "Size Not Selected" });
 
     if (sizeVariant.stock < quantity) {
-      return res.status(400).json({ message: "Insufficient stock" });
+      return res
+        .status(400)
+        .json({ message: "Insufficient stock for selected Product" });
     }
 
     // Check if the product already exists in the cart
@@ -485,7 +487,7 @@ exports.upsertCart = async (req, res) => {
 
     await cart.save();
 
-    return res.status(201).json({ message: "Cart updated successfully", cart });
+    return res.status(201).json({ message: "Item Added To Cart", cart });
   } catch (error) {
     console.error("Error updating cart:", error);
     return res
