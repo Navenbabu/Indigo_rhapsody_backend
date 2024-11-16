@@ -248,7 +248,6 @@ exports.uploadBulkProducts = async (req, res) => {
     const fileBuffer = Buffer.from(response.data, "binary");
     console.log("File buffer created");
 
-
     const workbook = xlsx.read(fileBuffer, { type: "buffer" });
     console.log("Workbook read successfully");
 
@@ -260,7 +259,6 @@ exports.uploadBulkProducts = async (req, res) => {
 
     const products = {};
 
-  
     for (const row of sheetData) {
       const categoryDoc = await Category.findOneAndUpdate(
         { name: row.category },
@@ -276,7 +274,6 @@ exports.uploadBulkProducts = async (req, res) => {
 
       const productName = row.productName.trim().toLowerCase();
 
- 
       if (!products[productName]) {
         let imageList = [];
         let coverImageFirebaseUrl = "";
@@ -410,11 +407,16 @@ exports.updateVariantStock = async (req, res) => {
 
       // Find the product by name (case-insensitive)
       const product = await Product.findOne({
-        productName: new RegExp(`^${productName.trim()}$`, "i"),
+        productName: new RegExp(
+          `^${productName.trim().replace(/\s+/g, " ")}$`,
+          "i"
+        ),
       });
-
       if (!product) {
         console.error(`Product not found: ${productName}`);
+        console.error(
+          `Make sure the productName in Excel matches the database productName.`
+        );
         continue;
       }
 
@@ -648,7 +650,10 @@ exports.getProductsById = async (req, res) => {
     // Create availableColors array with color and a single image
     const availableColors = product.variants.map((variant) => ({
       color: variant.color,
-      image: variant.imageList && variant.imageList.length > 0 ? variant.imageList[0] : null,
+      image:
+        variant.imageList && variant.imageList.length > 0
+          ? variant.imageList[0]
+          : null,
     }));
 
     // Find the selected variant based on the color parameter, if provided
@@ -692,7 +697,6 @@ exports.getProductsById = async (req, res) => {
     });
   }
 };
-
 
 exports.getProductsBySubCategory = async (req, res) => {
   try {
