@@ -114,6 +114,12 @@ const productsSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  wishlistedBy: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
 });
 
 module.exports = mongoose.model("Product", productsSchema);
