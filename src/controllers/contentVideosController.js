@@ -60,16 +60,21 @@ exports.approveVideo = async (req, res) => {
 // Get all videos (approved only)
 exports.getAllVideos = async (req, res) => {
   try {
-    const videos = await ContentVideo.find({ is_approved: true }).populate(
-      "userId creatorId",
-      "displayName email"
-    );
+    const { userId } = req.query; // Pass the userId from the frontend
+
+    const videos = await ContentVideo.find({ is_approved: true }).lean();
 
     if (!videos.length) {
       return res.status(404).json({ message: "No videos found." });
     }
 
-    res.status(200).json({ videos });
+    // Add the 'liked' field for the current user
+    const videosWithLikedStatus = videos.map((video) => ({
+      ...video,
+      liked: video.likedBy.includes(userId),
+    }));
+
+    res.status(200).json({ videos: videosWithLikedStatus });
   } catch (error) {
     console.error("Error fetching videos:", error);
     res.status(500).json({
@@ -78,6 +83,7 @@ exports.getAllVideos = async (req, res) => {
     });
   }
 };
+
 exports.getAllVideosWithLikesAndComments = async (req, res) => {
   try {
     // Fetch all videos regardless of approval status
