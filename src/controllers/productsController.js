@@ -684,6 +684,7 @@ exports.getProductsById = async (req, res) => {
       fit: product.fit,
       material: product.material,
       fabric: product.fabric,
+      wishlistedBy: product.wishlistedBy,
       designerRef: product.designerRef,
       coverImage: product.coverImage,
       availableColors: availableColors, // Now includes color and single image
