@@ -456,7 +456,6 @@ exports.loginAdmin = async (req, res) => {
       message: "Login successful",
       userId: user._id,
       role: user.role,
-      token,
     });
   } catch (error) {
     console.error("Error during login:", error);
