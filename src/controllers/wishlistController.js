@@ -35,12 +35,11 @@ const toggleWishlistItem = async (req, res) => {
       await Wishlist.deleteOne({ _id: existingItem._id });
 
       // Remove the user ID from the product's wishlistedBy array
-      if (product.wishlistedBy.includes(userId)) {
-        product.wishlistedBy = product.wishlistedBy.filter(
-          (id) => id !== userId
-        );
-        await product.save();
-      }
+      const userIdStr = userId.toString(); // Ensure userId is a string for comparison
+      product.wishlistedBy = product.wishlistedBy.filter(
+        (id) => id.toString() !== userIdStr
+      );
+      await product.save();
 
       return res.status(200).json({ message: "Product removed from wishlist" });
     } else {
@@ -49,8 +48,9 @@ const toggleWishlistItem = async (req, res) => {
       await newWishlistItem.save();
 
       // Add the user ID to the product's wishlistedBy array if not already present
-      if (!product.wishlistedBy.includes(userId)) {
-        product.wishlistedBy.push(userId);
+      const userIdStr = userId.toString(); // Ensure userId is a string
+      if (!product.wishlistedBy.includes(userIdStr)) {
+        product.wishlistedBy.push(userIdStr);
         await product.save();
       }
 
