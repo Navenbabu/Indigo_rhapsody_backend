@@ -803,6 +803,7 @@ exports.getProductVariantByColor = async (req, res) => {
       fabric: product.fabric,
       designerRef: product.designerRef,
       coverImage: product.coverImage,
+      wishlistedBy: product.wishlistedBy,
       variant: variant,
     });
   } catch (error) {
