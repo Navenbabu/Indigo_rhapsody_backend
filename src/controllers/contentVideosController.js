@@ -60,6 +60,8 @@ exports.approveVideo = async (req, res) => {
 // Get all videos (approved only)
 exports.getAllVideos = async (req, res) => {
   try {
+    const { userId } = req.query; // Pass the userId from the frontend.
+
     const videos = await ContentVideo.find({ is_approved: true }).populate(
       "userId creatorId",
       "displayName email"
@@ -69,7 +71,13 @@ exports.getAllVideos = async (req, res) => {
       return res.status(404).json({ message: "No videos found." });
     }
 
-    res.status(200).json({ videos });
+    // Add a `liked` field for the current user.
+    const videosWithLikedStatus = videos.map((video) => ({
+      ...video.toObject(),
+      liked: video.likedBy.includes(userId),
+    }));
+
+    res.status(200).json({ videos: videosWithLikedStatus });
   } catch (error) {
     console.error("Error fetching videos:", error);
     res.status(500).json({
@@ -78,6 +86,7 @@ exports.getAllVideos = async (req, res) => {
     });
   }
 };
+
 exports.getAllVideosWithLikesAndComments = async (req, res) => {
   try {
     // Fetch all videos regardless of approval status
@@ -189,11 +198,10 @@ exports.deleteVideo = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
 exports.toggleLikeVideo = async (req, res) => {
   try {
-    const { videoId } = req.params; // Get the video ID from the request parameters
-    const { userId } = req.body; // Get the user ID from the request body
+    const { videoId } = req.params;
+    const { userId } = req.body;
 
     if (!videoId || !userId) {
       return res
@@ -201,27 +209,22 @@ exports.toggleLikeVideo = async (req, res) => {
         .json({ message: "Video ID and User ID are required" });
     }
 
-    // Find the video by ID
     const video = await ContentVideo.findById(videoId);
 
     if (!video) {
       return res.status(404).json({ message: "Video not found" });
     }
 
-    // Check if the user has already liked the video
+    // Toggle like status.
     const userIndex = video.likedBy.indexOf(userId);
-
     if (userIndex === -1) {
-      // User has not liked the video, so add the like
       video.likedBy.push(userId);
       video.no_of_likes += 1;
     } else {
-      // User has already liked the video, so remove the like
       video.likedBy.splice(userIndex, 1);
       video.no_of_likes -= 1;
     }
 
-    // Save the updated video in the database
     await video.save();
 
     res.status(200).json({
@@ -229,13 +232,14 @@ exports.toggleLikeVideo = async (req, res) => {
         userIndex === -1
           ? "Video liked successfully"
           : "Video unliked successfully",
-      video,
+      liked: userIndex === -1, // Return the new like status.
+      videoId,
     });
   } catch (error) {
     console.error("Error toggling like status:", error);
     res
       .status(500)
-      .json({ message: "Internal Server Error:", error: error.message });
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
