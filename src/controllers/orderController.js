@@ -7,6 +7,7 @@ const fs = require("fs");
 const PDFDocument = require("pdfkit"); // To generate PDF invoices
 const nodemailer = require("nodemailer");
 const { bucket } = require("../service/firebaseServices");
+const { DateTime } = require("luxon");
 const {
   createNotification,
   sendFcmNotification,
@@ -444,7 +445,6 @@ exports.updateOrder = async (req, res) => {
     return res.status(500).json({ message: "Error updating order", error });
   }
 };
-
 exports.getOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -469,7 +469,18 @@ exports.getOrderById = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    return res.status(200).json({ order });
+    // Format the createDate to IST
+    const createDateIST = DateTime.fromJSDate(order.createdAt) // assuming `createdAt` is the field storing the order creation time
+      .setZone("Asia/Kolkata")
+      .toLocaleString(DateTime.DATETIME_MED);
+
+    // Add the formatted createDate to the response
+    const orderResponse = {
+      ...order.toObject(),
+      createDate: createDateIST,
+    };
+
+    return res.status(200).json({ order: orderResponse });
   } catch (error) {
     console.error("Error fetching order by ID:", error);
     return res.status(500).json({
