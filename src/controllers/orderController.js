@@ -470,7 +470,7 @@ exports.getOrderById = async (req, res) => {
     }
 
     // Format the createDate to IST
-    const createDateIST = DateTime.fromJSDate(order.createdAt) // assuming `createdAt` is the field storing the order creation time
+    const createDateIST = DateTime.fromJSDate(order.createdDate) // assuming `createdAt` is the field storing the order creation time
       .setZone("Asia/Kolkata")
       .toLocaleString(DateTime.DATETIME_MED);
 
