@@ -261,6 +261,19 @@ exports.createUserAndDesigner = async (req, res) => {
         .json({ message: "User already exists with this email" });
     }
 
+    const addPickupResponse = await addPickupLocation({
+      pickup_location: displayName,
+      name: displayName,
+      email,
+      phone: phoneNumber,
+      address,
+      address_2: "", // Additional address line, if any
+      city,
+      state,
+      country: "India",
+      pin_code: pincode,
+    });
+
     // Step 1: Create Firebase Auth User
     const firebaseUser = await admin.auth().createUser({
       email,
@@ -304,18 +317,6 @@ exports.createUserAndDesigner = async (req, res) => {
     session.endSession();
 
     // Call addPickupLocation API
-    const addPickupResponse = await addPickupLocation({
-      pickup_location: "Default Location",
-      name: displayName,
-      email,
-      phone: phoneNumber,
-      address,
-      address_2: "", // Additional address line, if any
-      city,
-      state,
-      country: "India",
-      pin_code: pincode,
-    });
 
     res.status(201).json({
       message: "User, Designer, and Pickup Location created successfully",
