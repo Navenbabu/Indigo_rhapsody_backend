@@ -217,7 +217,7 @@ exports.paymentWebhook = async (req, res) => {
 // Controller to get all payments with user name and cart total amount populated
 exports.getAllPayments = async (req, res) => {
   try {
-    // Fetch all payments and populate user name and cart total amount
+    // Fetch all payments, populate user name and cart total amount, and sort by most recent
     const payments = await PaymentDetails.find()
       .populate({
         path: "userId",
@@ -226,7 +226,8 @@ exports.getAllPayments = async (req, res) => {
       .populate({
         path: "cartId",
         select: "total_amount", // Only fetch the totalAmount field from Cart
-      });
+      })
+      .sort({ createdDate: -1 }); // Sort by createdAt in descending order (most recent first)
 
     if (!payments.length) {
       return res.status(404).json({ message: "No payments found" });
