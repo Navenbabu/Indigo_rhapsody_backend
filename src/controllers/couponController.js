@@ -73,17 +73,19 @@ exports.getCoupon = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-// Get all coupons
 exports.getAllCoupons = async (req, res) => {
   try {
-    const coupons = await Coupon.find();
+    // Get the current date and time
+    const currentDate = new Date();
+
+    // Fetch coupons where expiryDate is greater than the current date and time
+    const coupons = await Coupon.find({ expiryDate: { $gte: currentDate } });
+
     res.status(200).json(coupons);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
 // Get a coupon by ID
 exports.getCouponById = async (req, res) => {
   try {
@@ -190,7 +192,6 @@ exports.applyCouponToCart = async (req, res) => {
     const totalAmount =
       subtotal - discountAmount + cart.shipping_cost + cart.tax_amount;
 
-   
     cart.subtotal = subtotal;
     cart.discount_applied = true;
     cart.discount_amount = discountAmount;
