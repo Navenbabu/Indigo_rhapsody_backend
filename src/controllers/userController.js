@@ -233,6 +233,7 @@ exports.getAllUsersWithRoleUser = async (req, res) => {
 // Controller to create User and Designer
 exports.createUserAndDesigner = async (req, res) => {
   const session = await User.startSession();
+  let transactionCommitted = false; // Flag to track transaction status
   session.startTransaction();
 
   try {
@@ -256,12 +257,13 @@ exports.createUserAndDesigner = async (req, res) => {
     // Check if user already exists in MongoDB
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
+      await session.abortTransaction(); // Abort if user already exists
       return res
         .status(400)
         .json({ message: "User already exists with this email" });
     }
 
-    await session.commitTransaction();
+    // Create pickup location
     const addPickupResponse = await addPickupLocation({
       pickup_location: displayName,
       name: displayName,
@@ -313,10 +315,13 @@ exports.createUserAndDesigner = async (req, res) => {
 
     await newDesigner.save({ session });
 
-    // Commit transaction before calling external API
+    // Commit transaction
+    await session.commitTransaction();
+    transactionCommitted = true; // Set flag to true after commit
 
     session.endSession();
 
+    // Send welcome email
     const transporter = nodemailer.createTransport({
       host: "smtp-relay.brevo.com",
       port: 587,
@@ -330,14 +335,14 @@ exports.createUserAndDesigner = async (req, res) => {
     const mailOptions = {
       from: '"Indigo Rhapsody" <sveccha.apps@gmail.com>',
       to: email,
-      subject: "Welcome to the Indigo Rhapsody ",
+      subject: "Welcome to the Indigo Rhapsody",
       html: `
         <div style="font-family: Arial, sans-serif; text-align: center;">
-          <img src"https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Indigo Rhapsody Logo" style="width: 150px; margin-bottom: 20px;">
-          <h1>Welcome to the Seller hub</h1>
+          <img src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Indigo Rhapsody Logo" style="width: 150px; margin-bottom: 20px;">
+          <h1>Welcome to the Seller Hub</h1>
           <p>You've signed up for amazing experiences from Indigo Rhapsody.</p>
           <p>We are so pleased to have you onboard.</p>
-          <p>Please wait from approval from our team , while Your application is under review.</p>
+          <p>Please wait for approval from our team while your application is under review.</p>
           <div style="margin-top: 20px;">
             <a href="https://twitter.com" target="_blank" style="margin-right: 10px;">Twitter</a>
             <a href="https://facebook.com" target="_blank" style="margin-right: 10px;">Facebook</a>
@@ -356,11 +361,14 @@ exports.createUserAndDesigner = async (req, res) => {
       pickupResponse: addPickupResponse,
     });
   } catch (error) {
-    await session.abortTransaction();
+    if (!transactionCommitted) {
+      // Only abort if the transaction has not been committed
+      await session.abortTransaction();
+    }
     session.endSession();
     console.error("Error creating user, designer, or pickup location:", error);
     res.status(500).json({
-      message: `${error.code}: ${error.message}`,
+      message: `${error.code || "Error"}: ${error.message}`,
       error: error.message,
     });
   }
