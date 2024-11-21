@@ -260,17 +260,6 @@ exports.createUserAndDesigner = async (req, res) => {
         .status(400)
         .json({ message: "User already exists with this email" });
     }
-
-    // Step 1: Create Firebase Auth User
-    const firebaseUser = await admin.auth().createUser({
-      email,
-      password,
-      displayName,
-      phoneNumber,
-    });
-
-    console.log("Firebase user created:", firebaseUser.uid);
-
     const addPickupResponse = await addPickupLocation({
       pickup_location: displayName,
       name: displayName,
@@ -283,6 +272,16 @@ exports.createUserAndDesigner = async (req, res) => {
       country: "India",
       pin_code: pincode,
     });
+
+    // Step 1: Create Firebase Auth User
+    const firebaseUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName,
+      phoneNumber,
+    });
+
+    console.log("Firebase user created:", firebaseUser.uid);
 
     // Step 2: Create MongoDB User
     const newUser = new User({
@@ -359,7 +358,7 @@ exports.createUserAndDesigner = async (req, res) => {
     session.endSession();
     console.error("Error creating user, designer, or pickup location:", error);
     res.status(500).json({
-      message: `${error.code}: ${error.message}` ,
+      message: `${error.code}: ${error.message}`,
       error: error.message,
     });
   }
