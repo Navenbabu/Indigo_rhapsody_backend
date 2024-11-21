@@ -261,6 +261,16 @@ exports.createUserAndDesigner = async (req, res) => {
         .json({ message: "User already exists with this email" });
     }
 
+    // Step 1: Create Firebase Auth User
+    const firebaseUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName,
+      phoneNumber,
+    });
+
+    console.log("Firebase user created:", firebaseUser.uid);
+
     const addPickupResponse = await addPickupLocation({
       pickup_location: displayName,
       name: displayName,
@@ -273,16 +283,6 @@ exports.createUserAndDesigner = async (req, res) => {
       country: "India",
       pin_code: pincode,
     });
-
-    // Step 1: Create Firebase Auth User
-    const firebaseUser = await admin.auth().createUser({
-      email,
-      password,
-      displayName,
-      phoneNumber,
-    });
-
-    console.log("Firebase user created:", firebaseUser.uid);
 
     // Step 2: Create MongoDB User
     const newUser = new User({
@@ -316,7 +316,37 @@ exports.createUserAndDesigner = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // Call addPickupLocation API
+    const transporter = nodemailer.createTransport({
+      host: "smtp-relay.brevo.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: "sveccha.apps@gmail.com",
+        pass: "4VhALB7qcgbYn0wv",
+      },
+    });
+
+    const mailOptions = {
+      from: '"Indigo Rhapsody" <sveccha.apps@gmail.com>',
+      to: email,
+      subject: "Welcome to the Indigo Rhapsody ",
+      html: `
+        <div style="font-family: Arial, sans-serif; text-align: center;">
+          <img src"https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Indigo Rhapsody Logo" style="width: 150px; margin-bottom: 20px;">
+          <h1>Welcome to the Seller hub</h1>
+          <p>You've signed up for amazing experiences from Indigo Rhapsody.</p>
+          <p>We are so pleased to have you onboard.</p>
+          <p>Please wait from approval from our team , while Your application is under review.</p>
+          <div style="margin-top: 20px;">
+            <a href="https://twitter.com" target="_blank" style="margin-right: 10px;">Twitter</a>
+            <a href="https://facebook.com" target="_blank" style="margin-right: 10px;">Facebook</a>
+            <a href="https://instagram.com" target="_blank">Instagram</a>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
 
     res.status(201).json({
       message: "User, Designer, and Pickup Location created successfully",

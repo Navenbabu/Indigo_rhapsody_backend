@@ -190,7 +190,7 @@ exports.applyCouponToCart = async (req, res) => {
     const totalAmount =
       subtotal - discountAmount + cart.shipping_cost + cart.tax_amount;
 
-    // Update the cart with the new totals and mark the coupon as applied
+   
     cart.subtotal = subtotal;
     cart.discount_applied = true;
     cart.discount_amount = discountAmount;

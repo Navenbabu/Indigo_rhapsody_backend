@@ -648,3 +648,9 @@ exports.addPickupLocation = async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
+
+
+exports.shippingWebhook = async (req, res) => {
+
+  
+}
