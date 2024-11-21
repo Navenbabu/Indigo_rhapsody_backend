@@ -260,6 +260,8 @@ exports.createUserAndDesigner = async (req, res) => {
         .status(400)
         .json({ message: "User already exists with this email" });
     }
+
+    await session.commitTransaction();
     const addPickupResponse = await addPickupLocation({
       pickup_location: displayName,
       name: displayName,
@@ -312,7 +314,7 @@ exports.createUserAndDesigner = async (req, res) => {
     await newDesigner.save({ session });
 
     // Commit transaction before calling external API
-    await session.commitTransaction();
+
     session.endSession();
 
     const transporter = nodemailer.createTransport({
