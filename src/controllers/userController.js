@@ -359,7 +359,7 @@ exports.createUserAndDesigner = async (req, res) => {
     session.endSession();
     console.error("Error creating user, designer, or pickup location:", error);
     res.status(500).json({
-      message: "Internal Server Error",
+      message: error.message,
       error: error.message,
     });
   }
