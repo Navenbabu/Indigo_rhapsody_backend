@@ -657,11 +657,11 @@ exports.getTotalOrdersByDesigners = async (req, res) => {
   try {
     // Aggregate orders to count total number of orders per designer
     const totalOrdersByDesigner = await Order.aggregate([
-      { $unwind: "$products" }, // Unwind products to group by designerRef
+      { $unwind: "$products" }, // Unwind products to process each product individually
       {
         $group: {
-          _id: "$products.designerRef",
-          totalOrders: { $sum: 1 }, // Count each order
+          _id: "$products.designerRef", // Group by designerRef
+          totalOrders: { $sum: 1 }, // Increment for each product
         },
       },
       {
