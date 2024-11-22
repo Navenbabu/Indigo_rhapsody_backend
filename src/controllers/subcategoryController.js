@@ -160,6 +160,7 @@ exports.getSubCategoriesByCategoryId = async (req, res) => {
 
     // Fetch subcategories that belong to this category
     const subCategories = await SubCategory.find({
+      isApproved: true,
       categoryId: categoryId,
     }).populate("categoryId", "name"); // Populate category name
 
