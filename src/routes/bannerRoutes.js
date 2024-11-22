@@ -7,12 +7,10 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Banner routes
 
-// Create Banner (with image upload)
 router.post("/", upload.single("file"), bannerController.createBanner);
 
-// Get All Banners
+
 router.get("/", bannerController.getBanners);
 
 // Update Banner by ID (with optional image upload)

@@ -35,20 +35,23 @@ const uploadBannerImage = async (file) => {
 // Create Banner
 exports.createBanner = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, imageUrl } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ message: "Image is required" });
+    // Validate required fields
+    if (!name || !imageUrl) {
+      return res
+        .status(400)
+        .json({ message: "Name and Image URL are required" });
     }
 
-    const imageUrl = await uploadBannerImage(req.file);
-
+    // Create a new banner
     const banner = new Banner({
       name,
       image: imageUrl,
     });
 
     await banner.save();
+
     res.status(201).json({ message: "Banner created successfully", banner });
   } catch (error) {
     res.status(500).json({ message: "Error creating banner", error });
