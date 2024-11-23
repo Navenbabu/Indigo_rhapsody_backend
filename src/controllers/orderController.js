@@ -64,7 +64,12 @@ const generateAndUploadInvoice = async (order) => {
       .fillColor("#000")
       .fontSize(24)
       .text("Invoice", 50, 40)
-      .image("path/to/your-logo.png", doc.page.width - 150, 30, { width: 100 });
+      .image(
+        "https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe",
+        doc.page.width - 150,
+        30,
+        { width: 100 }
+      );
 
     doc
       .fontSize(12)
