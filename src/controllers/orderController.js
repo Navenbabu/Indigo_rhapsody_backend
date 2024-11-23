@@ -63,13 +63,13 @@ const generateAndUploadInvoice = async (order) => {
       .fill("#f8f8f8")
       .fillColor("#000")
       .fontSize(24)
-      .text("Invoice", 50, 40)
-      .image(
-        "https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe",
-        doc.page.width - 150,
-        30,
-        { width: 100 }
-      );
+      .text("Invoice", 50, 40);
+    // .image(
+    //   "https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe",
+    //   doc.page.width - 150,
+    //   30,
+    //   { width: 100 }
+    // );
 
     doc
       .fontSize(12)
