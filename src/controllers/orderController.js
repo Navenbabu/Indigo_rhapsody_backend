@@ -75,18 +75,17 @@ const generateAndUploadInvoice = async (order) => {
       .fontSize(12)
       .fillColor("#000")
       .text(`Invoice #: ${order.orderId}`, 50, 120)
-      .text(`Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`)
-      .text(`Due Date: ${new Date(order.dueDate).toLocaleDateString()}`);
+      .text(`Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`);
 
     doc
       .text("Billed To:", 50, 160)
       .font("Helvetica-Bold")
-      .text(order.customer.name)
+      .text(order.userId.displayName)
       .font("Helvetica")
-      .text(order.customer.address.line1)
-      .text(order.customer.address.line2 || "")
+      .text(order.shippingDetails.address.street)
+
       .text(
-        `${order.customer.address.city}, ${order.customer.address.state} - ${order.customer.address.zip}`,
+        `${order.shippingDetails.address.city}, ${order.shippingDetails.address.state} - ${order.shippingDetails.address.country}`,
         { align: "left" }
       );
 
