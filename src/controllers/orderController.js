@@ -173,25 +173,27 @@ const generateAndUploadInvoice = async (order) => {
       doc
         .font("Helvetica-Bold")
         .text("Subtotal:", 400, summaryTop, { align: "left" })
-        .text(`₹${subtotal.toFixed(2)}`, 470, summaryTop, { align: "right" });
+        .text(`₹${order.subtotal.toFixed(2)}`, 470, summaryTop, {
+          align: "right",
+        });
 
       doc
         .font("Helvetica")
         .text("Discount:", 400, summaryTop + 15, { align: "left" })
-        .text(`-₹${discountAmount.toFixed(2)}`, 470, summaryTop + 15, {
+        .text(`-₹${order.discountAmount.toFixed(2)}`, 470, summaryTop + 15, {
           align: "right",
         });
 
       doc
         .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
-        .text(`₹${tax_amount.toFixed(2)}`, 470, summaryTop + 30, {
+        .text(`₹${order.tax_amount.toFixed(2)}`, 470, summaryTop + 30, {
           align: "right",
         });
 
       doc
         .font("Helvetica-Bold")
         .text("Total:", 400, summaryTop + 45, { align: "left" })
-        .text(`₹${totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
+        .text(`₹${order.amount.toFixed(2)}`, 470, summaryTop + 45, {
           align: "right",
         });
 
