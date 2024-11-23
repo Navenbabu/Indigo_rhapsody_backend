@@ -57,32 +57,156 @@ const generateAndUploadInvoice = async (order) => {
       metadata: { contentType: "application/pdf" },
     });
 
-    // Generate the PDF content
-    doc.fontSize(20).text("Order Invoice", { align: "center" }).moveDown();
+    // Header Section
+    doc
+      .rect(0, 0, doc.page.width, 100)
+      .fill("#f8f8f8")
+      .fillColor("#000")
+      .fontSize(24)
+      .text("Invoice", 50, 40)
+      .image("path/to/your-logo.png", doc.page.width - 150, 30, { width: 100 });
+
     doc
       .fontSize(12)
-      .text(`Order ID: ${order.orderId}`)
-      .text(`Order Date: ${new Date(order.createdAt).toLocaleDateString()}`)
-      .moveDown();
+      .fillColor("#000")
+      .text(`Invoice #: ${order.orderId}`, 50, 120)
+      .text(`Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`)
+      .text(`Due Date: ${new Date(order.dueDate).toLocaleDateString()}`);
+
+    doc
+      .text("Billed To:", 50, 160)
+      .font("Helvetica-Bold")
+      .text(order.customer.name)
+      .font("Helvetica")
+      .text(order.customer.address.line1)
+      .text(order.customer.address.line2 || "")
+      .text(
+        `${order.customer.address.city}, ${order.customer.address.state} - ${order.customer.address.zip}`,
+        { align: "left" }
+      );
+
+    // Table Header
+    doc.moveDown(2);
+    const tableTop = 250;
+    const tableColumns = [
+      "Item/Service",
+      "Description",
+      "Qty",
+      "Rate",
+      "Amount",
+    ];
+    const columnWidths = [140, 140, 60, 80, 80];
+
+    tableColumns.forEach((text, i) => {
+      doc
+        .fontSize(10)
+        .font("Helvetica-Bold")
+        .text(
+          text,
+          50 + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+          tableTop,
+          {
+            width: columnWidths[i],
+            align: i === 4 ? "right" : "left",
+          }
+        );
+    });
+
+    // Draw Divider Line
+    doc
+      .strokeColor("#cccccc")
+      .lineWidth(1)
+      .moveTo(50, tableTop + 20)
+      .lineTo(doc.page.width - 50, tableTop + 20)
+      .stroke();
+
+    // Table Rows
+    let rowY = tableTop + 30;
 
     order.products.forEach((product) => {
       doc
-        .text(`Product: ${product.productName}`)
-        .text(`Color: ${product.color}`)
-        .text(`Size: ${product.size}`)
-        .text(`SKU: ${product.sku}`)
-        .text(`Quantity: ${product.quantity}`)
-        .text(`Price: $${product.price}`)
-        .text(`Discount: -$${product.discount}`)
-        .moveDown();
+        .font("Helvetica")
+        .fontSize(10)
+        .text(product.productName, 50, rowY, { width: columnWidths[0] })
+        .text(product.description || "-", 190, rowY, { width: columnWidths[1] })
+        .text(product.quantity, 330, rowY, {
+          width: columnWidths[2],
+          align: "center",
+        })
+        .text(`₹${product.price}`, 390, rowY, {
+          width: columnWidths[3],
+          align: "center",
+        })
+        .text(`₹${(product.price * product.quantity).toFixed(2)}`, 470, rowY, {
+          width: columnWidths[4],
+          align: "right",
+        });
+
+      rowY += 20; // Move to the next row
     });
 
-    doc.text(`Total Amount: $${order.amount}`, { align: "right" });
+    // Total Summary
+    const summaryTop = rowY + 20;
 
-    // Finalize the PDF and pipe it to Firebase storage
+    doc
+      .font("Helvetica-Bold")
+      .text("Subtotal:", 400, summaryTop, { align: "right" })
+      .text(`₹${order.subtotal.toFixed(2)}`, 470, summaryTop, {
+        align: "right",
+      });
+
+    doc
+      .font("Helvetica")
+      .text("Discount:", 400, summaryTop + 15, { align: "right" })
+      .text(`-₹${order.discount.toFixed(2)}`, 470, summaryTop + 15, {
+        align: "right",
+      });
+
+    doc
+      .text("Tax (5%):", 400, summaryTop + 30, { align: "right" })
+      .text(`₹${order.tax.toFixed(2)}`, 470, summaryTop + 30, {
+        align: "right",
+      });
+
+    doc
+      .font("Helvetica-Bold")
+      .text("Total:", 400, summaryTop + 45, { align: "right" })
+      .text(`₹${order.amount.toFixed(2)}`, 470, summaryTop + 45, {
+        align: "right",
+      });
+
+    // Footer Section
+    doc.moveDown(2);
+    doc
+      .fontSize(10)
+      .text("Terms:", 50, doc.page.height - 100)
+      .text(
+        order.terms ||
+          "Payment is due within 15 days of receipt of the invoice.",
+        50,
+        doc.page.height - 85,
+        {
+          width: doc.page.width - 100,
+        }
+      );
+
+    doc
+      .fontSize(10)
+      .text("Conditions/Instructions:", 50, doc.page.height - 60)
+      .text(
+        order.instructions || "Please contact us if you have any questions.",
+        50,
+        doc.page.height - 45,
+        {
+          width: doc.page.width - 100,
+        }
+      );
+
+    // Finalize PDF
     doc.end();
     doc.pipe(stream);
 
+    // Upload to Firebase
     stream.on("finish", async () => {
       const [url] = await firebaseFile.getSignedUrl({
         action: "read",
@@ -97,6 +221,7 @@ const generateAndUploadInvoice = async (order) => {
     });
   });
 };
+
 exports.getTotalOrdersOfparticularDesigner = async (req, res) => {};
 
 // Create Order Controller
@@ -206,25 +331,161 @@ exports.createOrder = async (req, res) => {
       to: email,
       subject: "Order Confirmation",
       html: `
-        <h1>Order Confirmation</h1>
-        <p>Dear ${user.displayName},</p>
-        <p>Thank you for your order. Below are your order details:</p>
-        <h2>Order Summary</h2>
-        <ul>
-          ${orderProducts
-            .map(
-              (product) =>
-                `<li>${product.productName} - ${product.quantity} x $${product.price}</li>`
-            )
-            .join("")}
-        </ul>
-        <p><strong>Subtotal:</strong> $${subtotal}</p>
-        <p><strong>Tax:</strong> $${tax_amount}</p>
-        <p><strong>Shipping:</strong> $${shipping_cost}</p>
-        <p><strong>Discount:</strong> -$${discount_amount}</p>
-        <p><strong>Total Amount:</strong> $${total_amount}</p>
+       <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Confirmation</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f9f9f9;
+      }
+      .email-container {
+        max-width: 600px;
+        margin: 20px auto;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .header {
+        background-color: #004080;
+        color: #ffffff;
+        text-align: center;
+        padding: 20px;
+      }
+      .header img {
+        max-width: 100px;
+        margin-bottom: 10px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+      .header p {
+        margin: 5px 0 0;
+        font-size: 14px;
+      }
+      .content {
+        padding: 20px;
+        color: #333333;
+      }
+      .content h2 {
+        font-size: 20px;
+        margin-bottom: 10px;
+        color: #004080;
+      }
+      .content p {
+        font-size: 16px;
+        margin: 10px 0;
+      }
+      .content .order-details {
+        margin: 20px 0;
+      }
+      .content .order-details table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .content .order-details table th,
+      .content .order-details table td {
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid #eeeeee;
+      }
+      .content .order-details table th {
+        color: #666666;
+      }
+      .content .total {
+        font-size: 18px;
+        margin: 10px 0;
+      }
+      .footer {
+        background-color: #f4f4f4;
+        padding: 15px;
+        text-align: center;
+        font-size: 14px;
+        color: #999999;
+      }
+      .footer a {
+        color: #004080;
+        text-decoration: none;
+        margin: 0 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Header Section -->
+      <div class="header">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe"
+          alt="Logo"
+        />
+        <h1>Order Received!</h1>
+        <p>Order No: ${orderNumber}</p>
+      </div>
+
+      <!-- Content Section -->
+      <div class="content">
+        <h2>Hello, ${user.displayName}!</h2>
+        <p>
+          Thank you for your order. Your order has been received and will be
+          processed shortly. Below are the details of your order:
+        </p>
+
+        <!-- Order Details -->
+        <div class="order-details">
+          <table>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Price</th>
+            </tr>
+            ${orderProducts
+              .map(
+                (product) => `
+            <tr>
+              <td>${product.productName}</td>
+              <td>${product.quantity}</td>
+              <td>${product.price}</td>
+            </tr>
+            `
+              )
+              .join("")}
+          </table>
+        </div>
+
+        <p class="total"><strong>Subtotal:</strong> ${subtotal}</p>
+        <p class="total"><strong>Tax:</strong> ${tax_amount}</p>
+        <p class="total"><strong>Shipping:</strong> ${shipping_cost}</p>
+        <p class="total"><strong>Discount:</strong> -${discount_amount}</p>
+        <p class="total"><strong>Total Amount:</strong> ${total_amount}</p>
+
         <p>You can download your invoice <a href="${firebaseUrl}">here</a>.</p>
-        <p>Thank you for shopping with us!</p>
+        <p>
+          If you have any questions, feel free to reply to this email. Thank you
+          for shopping with us!
+        </p>
+      </div>
+
+      <!-- Footer Section -->
+      <div class="footer">
+        <p>
+          Follow us:
+          <a href="https://twitter.com" target="_blank">Twitter</a> |
+          <a href="https://facebook.com" target="_blank">Facebook</a> |
+          <a href="https://instagram.com" target="_blank">Instagram</a>
+        </p>
+        <p>Unsubscribe | Privacy Policy</p>
+      </div>
+    </div>
+  </body>
+</html>
+
       `,
     };
 

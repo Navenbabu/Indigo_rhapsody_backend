@@ -44,6 +44,132 @@ exports.createUser = async (req, res) => {
     });
 
     await newUser.save();
+    const transporter = nodemailer.createTransport({
+      host: "smtp-relay.brevo.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: "sveccha.apps@gmail.com",
+        pass: "4VhALB7qcgbYn0wv",
+      },
+    });
+
+    const mailOptions = {
+      from: '"Indigo Rhapsody" <sveccha.apps@gmail.com>',
+      to: email,
+      subject: "Welcome to Indigo Rhapsody Mobile Application",
+      html: `
+       <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome Email</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f9f9f9;
+      }
+      .email-container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .header {
+        background-color: #004080;
+        color: #ffffff;
+        padding: 20px;
+        text-align: center;
+      }
+      .header img {
+        max-width: 100px;
+        margin-bottom: 10px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .content {
+        padding: 20px;
+        text-align: center;
+      }
+      .content h2 {
+        font-size: 22px;
+        color: #333333;
+      }
+      .content p {
+        font-size: 16px;
+        color: #666666;
+        margin: 10px 0;
+      }
+      .content a.button {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 12px 25px;
+        background-color: #004080;
+        color: #ffffff;
+        text-decoration: none;
+        font-size: 16px;
+        border-radius: 5px;
+      }
+      .footer {
+        background-color: #f4f4f4;
+        padding: 15px;
+        text-align: center;
+        font-size: 14px;
+        color: #999999;
+      }
+      .footer a {
+        color: #004080;
+        text-decoration: none;
+        margin: 0 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="header">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe"
+          alt="Indigo Rhapsody Logo"
+        />
+        <h1>Welcome to Indigo Rhapsody</h1>
+      </div>
+      <div class="content">
+        <h2>Hello, ${displayName}</h2>
+        <p>Welcome to Indigo Rhapsody.We Welcome you to our platform .</p>
+        <p>Continue Shopping on Mobile App</p>
+      </div>
+      <div class="Content">
+        <img
+          src="https://marketplace.canva.com/EAFoEJMTGiI/1/0/1600w/canva-beige-aesthetic-new-arrival-fashion-banner-landscape-cNjAcBMeF9s.jpg"
+          alt="Indigo Rhapsody Banner"
+        />
+      </div>
+      <div class="footer">
+        <p>
+          Follow us for updates:
+          <a href="https://twitter.com" target="_blank">Twitter</a> |
+          <a href="https://facebook.com" target="_blank">Facebook</a> |
+          <a href="https://instagram.com" target="_blank">Instagram</a>
+        </p>
+        <p>
+          If you have questions, simply reply to this email. We're here to help!
+        </p>
+        <p>Unsubscribe | Privacy Policy</p>
+      </div>
+    </div>
+  </body>
+</html>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
     res
       .status(201)
       .json({ message: "User created successfully", user: newUser });
@@ -336,20 +462,118 @@ exports.createUserAndDesigner = async (req, res) => {
     const mailOptions = {
       from: '"Indigo Rhapsody" <sveccha.apps@gmail.com>',
       to: email,
-      subject: "Welcome to the Indigo Rhapsody",
+      subject: "Welcome to Indigo Rhapsody",
       html: `
-        <div style="font-family: Arial, sans-serif; text-align: center;">
-          <img src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Indigo Rhapsody Logo" style="width: 150px; margin-bottom: 20px;">
-          <h1>Welcome to the Seller Hub</h1>
-          <p>You've signed up for amazing experiences from Indigo Rhapsody.</p>
-          <p>We are so pleased to have you onboard.</p>
-          <p>Please wait for approval from our team while your application is under review.</p>
-          <div style="margin-top: 20px;">
-            <a href="https://twitter.com" target="_blank" style="margin-right: 10px;">Twitter</a>
-            <a href="https://facebook.com" target="_blank" style="margin-right: 10px;">Facebook</a>
-            <a href="https://instagram.com" target="_blank">Instagram</a>
-          </div>
-        </div>
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Welcome Email</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f9f9f9;
+              }
+              .email-container {
+                max-width: 600px;
+                margin: 40px auto;
+                background: #ffffff;
+                border-radius: 8px;
+                box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+              }
+              .header {
+                background-color: #004080;
+                color: #ffffff;
+                padding: 20px;
+                text-align: center;
+              }
+              .header img {
+                max-width: 100px;
+                margin-bottom: 10px;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 24px;
+              }
+              .content {
+                padding: 20px;
+                text-align: center;
+              }
+              .content h2 {
+                font-size: 22px;
+                color: #333333;
+              }
+              .content p {
+                font-size: 16px;
+                color: #666666;
+                margin: 10px 0;
+              }
+              .content a.button {
+                display: inline-block;
+                margin-top: 20px;
+                padding: 12px 25px;
+                background-color: #004080;
+                color: #ffffff;
+                text-decoration: none;
+                font-size: 16px;
+                border-radius: 5px;
+              }
+              .footer {
+                background-color: #f4f4f4;
+                padding: 15px;
+                text-align: center;
+                font-size: 14px;
+                color: #999999;
+              }
+              .footer a {
+                color: #004080;
+                text-decoration: none;
+                margin: 0 5px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="email-container">
+              <div class="header">
+                <img
+                  src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe"
+                  alt="Indigo Rhapsody Logo"
+                />
+                <h1>Welcome to Indigo Rhapsody</h1>
+              </div>
+              <div class="content">
+                <h2>Hello, ${displayName}!</h2>
+                <p>
+                  You've joined the Seller Hub at Indigo Rhapsody. We're thrilled to
+                  have you onboard!
+                </p>
+                <p>Please go through the guidelines to get started.</p>
+                <a
+                  href="https://indigo-rhapsody-resources.com"
+                  target="_blank"
+                  class="button"
+                  >Browse the Guides</a
+                >
+              </div>
+              <div class="footer">
+                <p>
+                  Follow us for updates:
+                  <a href="https://twitter.com" target="_blank">Twitter</a> |
+                  <a href="https://facebook.com" target="_blank">Facebook</a> |
+                  <a href="https://instagram.com" target="_blank">Instagram</a>
+                </p>
+                <p>
+                  If you have questions, simply reply to this email. We're here to help!
+                </p>
+                <p>Unsubscribe | Privacy Policy</p>
+              </div>
+            </div>
+          </body>
+        </html>
       `,
     };
 
