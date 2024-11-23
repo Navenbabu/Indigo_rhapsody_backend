@@ -91,9 +91,8 @@ const generateAndUploadInvoice = async (order) => {
         .fillColor("#000")
         .text(`Invoice #: ${order.orderId}`, 50, 120)
         .text(
-          `Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`
-        )
-        .text(`Due Date: ${new Date(order.dueDate).toLocaleDateString()}`);
+          `Date of Issue: ${new Date(order.createdDate).toLocaleDateString()}`
+        );
 
       doc
         .text("Billed To:", 50, 160)
@@ -111,7 +110,7 @@ const generateAndUploadInvoice = async (order) => {
       // Table Header
       doc.moveDown(2);
       const tableTop = 250;
-      const tableColumns = ["Item/Service", "Qty", "Rate", "Amount"];
+      const tableColumns = ["Product Name", "Qty", "Rate", "Amount"];
       const columnWidths = [140, 60, 80, 80];
 
       tableColumns.forEach((text, i) => {
@@ -148,11 +147,11 @@ const generateAndUploadInvoice = async (order) => {
             width: columnWidths[0],
           })
           .text(product.quantity || 0, 330, rowY, {
-            width: columnWidths[2],
+            width: columnWidths[1],
             align: "center",
           })
           .text(`₹${product.price || 0}`, 390, rowY, {
-            width: columnWidths[3],
+            width: columnWidths[2],
             align: "center",
           })
           .text(
@@ -160,7 +159,7 @@ const generateAndUploadInvoice = async (order) => {
             470,
             rowY,
             {
-              width: columnWidths[4],
+              width: columnWidths[3],
               align: "right",
             }
           );
@@ -179,13 +178,15 @@ const generateAndUploadInvoice = async (order) => {
       doc
         .font("Helvetica")
         .text("Discount:", 400, summaryTop + 15, { align: "left" })
-        .text(`-₹${discount.toFixed(2)}`, 470, summaryTop + 15, {
+        .text(`-₹${discountAmount.toFixed(2)}`, 470, summaryTop + 15, {
           align: "right",
         });
 
       doc
         .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
-        .text(`₹${tax.toFixed(2)}`, 470, summaryTop + 30, { align: "right" });
+        .text(`₹${tax_amount.toFixed(2)}`, 470, summaryTop + 30, {
+          align: "right",
+        });
 
       doc
         .font("Helvetica-Bold")
