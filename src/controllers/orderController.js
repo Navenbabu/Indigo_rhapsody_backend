@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const axios = require("axios"); // Import axios to fetch the image
 const Order = require("../models/orderModel");
 const Product = require("../models/productModels");
 const Cart = require("../models/cartModel");
@@ -47,9 +48,8 @@ const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
   return transporter.sendMail(mailOptions);
 };
 
-// Helper function to generate and upload PDF to Firebase
 const generateAndUploadInvoice = async (order) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
     const fileName = `invoices/invoice-${order.orderId}.pdf`;
     const firebaseFile = bucket.file(fileName);
@@ -63,160 +63,171 @@ const generateAndUploadInvoice = async (order) => {
     const tax = order.tax || 0;
     const totalAmount = order.amount || 0;
 
-    // Add Logo to Header
+    // Logo URL
     const logoUrl =
       "https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe";
 
-    // Header Section
-    doc
-      .rect(0, 0, doc.page.width, 100)
-      .fill("#f8f8f8")
-      .fillColor("#000")
-      .fontSize(24)
-      .text("Invoice", 50, 40);
+    try {
+      // Fetch the logo image as a buffer
+      const response = await axios.get(logoUrl, {
+        responseType: "arraybuffer",
+      });
+      const logoBuffer = Buffer.from(response.data, "binary");
 
-    doc.image(
-      logoUrl,
-      doc.page.width - 150, // Position the logo on the right
-      30, // Vertical position
-      { width: 100 } // Size of the logo
-    );
-
-    // Invoice Details
-    doc
-      .fontSize(12)
-      .fillColor("#000")
-      .text(`Invoice #: ${order.orderId}`, 50, 120)
-      .text(`Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`)
-      .text(`Due Date: ${new Date(order.dueDate).toLocaleDateString()}`);
-
-    doc
-      .text("Billed To:", 50, 160)
-      .font("Helvetica-Bold")
-      .text(order.userId?.displayName || "Customer Name")
-      .font("Helvetica")
-      .text(order.shippingDetails?.address?.street || "Street Address")
-      .text(
-        `${order.shippingDetails?.address?.city || "City"}, ${
-          order.shippingDetails?.address?.state || "State"
-        } - ${order.shippingDetails?.address?.country || "Country"}`,
-        { align: "left" }
-      );
-
-    // Table Header
-    doc.moveDown(2);
-    const tableTop = 250;
-    const tableColumns = ["Item/Service", "Qty", "Rate", "Amount"];
-    const columnWidths = [140, 60, 80, 80];
-
-    tableColumns.forEach((text, i) => {
+      // Header Section
       doc
-        .fontSize(10)
-        .font("Helvetica-Bold")
+        .rect(0, 0, doc.page.width, 100)
+        .fill("#f8f8f8")
+        .fillColor("#000")
+        .fontSize(24)
+        .text("Invoice", 50, 40);
+
+      // Add logo from buffer
+      doc.image(logoBuffer, doc.page.width - 150, 30, { width: 100 });
+
+      // Invoice Details
+      doc
+        .fontSize(12)
+        .fillColor("#000")
+        .text(`Invoice #: ${order.orderId}`, 50, 120)
         .text(
-          text,
-          50 + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
-          tableTop,
-          {
-            width: columnWidths[i],
-            align: i === 4 ? "right" : "left",
-          }
+          `Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`
+        )
+        .text(`Due Date: ${new Date(order.dueDate).toLocaleDateString()}`);
+
+      doc
+        .text("Billed To:", 50, 160)
+        .font("Helvetica-Bold")
+        .text(order.userId?.displayName || "Customer Name")
+        .font("Helvetica")
+        .text(order.shippingDetails?.address?.street || "Street Address")
+        .text(
+          `${order.shippingDetails?.address?.city || "City"}, ${
+            order.shippingDetails?.address?.state || "State"
+          } - ${order.shippingDetails?.address?.country || "Country"}`,
+          { align: "left" }
         );
-    });
 
-    // Draw Divider Line
-    doc
-      .strokeColor("#cccccc")
-      .lineWidth(1)
-      .moveTo(50, tableTop + 20)
-      .lineTo(doc.page.width - 50, tableTop + 20)
-      .stroke();
+      // Table Header
+      doc.moveDown(2);
+      const tableTop = 250;
+      const tableColumns = ["Item/Service", "Qty", "Rate", "Amount"];
+      const columnWidths = [140, 60, 80, 80];
 
-    // Table Rows
-    let rowY = tableTop + 30;
+      tableColumns.forEach((text, i) => {
+        doc
+          .fontSize(10)
+          .font("Helvetica-Bold")
+          .text(
+            text,
+            50 + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+            tableTop,
+            {
+              width: columnWidths[i],
+              align: i === 4 ? "right" : "left",
+            }
+          );
+      });
 
-    order.products.forEach((product) => {
+      // Draw Divider Line
+      doc
+        .strokeColor("#cccccc")
+        .lineWidth(1)
+        .moveTo(50, tableTop + 20)
+        .lineTo(doc.page.width - 50, tableTop + 20)
+        .stroke();
+
+      // Table Rows
+      let rowY = tableTop + 30;
+
+      order.products.forEach((product) => {
+        doc
+          .font("Helvetica")
+          .fontSize(10)
+          .text(product.productName || "-", 50, rowY, {
+            width: columnWidths[0],
+          })
+          .text(product.quantity || 0, 330, rowY, {
+            width: columnWidths[2],
+            align: "center",
+          })
+          .text(`₹${product.price || 0}`, 390, rowY, {
+            width: columnWidths[3],
+            align: "center",
+          })
+          .text(
+            `₹${((product.price || 0) * (product.quantity || 0)).toFixed(2)}`,
+            470,
+            rowY,
+            {
+              width: columnWidths[4],
+              align: "right",
+            }
+          );
+
+        rowY += 20; // Move to the next row
+      });
+
+      // Total Summary
+      const summaryTop = rowY + 20;
+
+      doc
+        .font("Helvetica-Bold")
+        .text("Subtotal:", 400, summaryTop, { align: "left" })
+        .text(`₹${subtotal.toFixed(2)}`, 470, summaryTop, { align: "right" });
+
       doc
         .font("Helvetica")
+        .text("Discount:", 400, summaryTop + 15, { align: "left" })
+        .text(`-₹${discount.toFixed(2)}`, 470, summaryTop + 15, {
+          align: "right",
+        });
+
+      doc
+        .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
+        .text(`₹${tax.toFixed(2)}`, 470, summaryTop + 30, { align: "right" });
+
+      doc
+        .font("Helvetica-Bold")
+        .text("Total:", 400, summaryTop + 45, { align: "left" })
+        .text(`₹${totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
+          align: "right",
+        });
+
+      // Footer Section
+      doc.moveDown(2);
+
+      doc
         .fontSize(10)
-        .text(product.productName || "-", 50, rowY, { width: columnWidths[0] })
-        .text(product.quantity || 0, 330, rowY, {
-          width: columnWidths[2],
-          align: "center",
-        })
-        .text(`₹${product.price || 0}`, 390, rowY, {
-          width: columnWidths[3],
-          align: "center",
-        })
+        .text("Conditions/Instructions:", 50, doc.page.height - 60)
         .text(
-          `₹${((product.price || 0) * (product.quantity || 0)).toFixed(2)}`,
-          470,
-          rowY,
-          {
-            width: columnWidths[4],
-            align: "right",
-          }
+          order.instructions || "Please contact us if you have any questions.",
+          50,
+          doc.page.height - 45,
+          { width: doc.page.width - 100 }
         );
 
-      rowY += 20; // Move to the next row
-    });
+      // Finalize PDF
+      doc.end();
+      doc.pipe(stream);
 
-    // Total Summary
-    const summaryTop = rowY + 20;
-
-    doc
-      .font("Helvetica-Bold")
-      .text("Subtotal:", 400, summaryTop, { align: "left" })
-      .text(`₹${subtotal.toFixed(2)}`, 470, summaryTop, { align: "right" });
-
-    doc
-      .font("Helvetica")
-      .text("Discount:", 400, summaryTop + 15, { align: "left" })
-      .text(`-₹${discount.toFixed(2)}`, 470, summaryTop + 15, {
-        align: "right",
+      // Upload to Firebase
+      stream.on("finish", async () => {
+        const [url] = await firebaseFile.getSignedUrl({
+          action: "read",
+          expires: "03-09-2491",
+        });
+        resolve(url); // Return the Firebase URL
       });
 
-    doc
-      .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
-      .text(`₹${tax.toFixed(2)}`, 470, summaryTop + 30, { align: "right" });
-
-    doc
-      .font("Helvetica-Bold")
-      .text("Total:", 400, summaryTop + 45, { align: "left" })
-      .text(`₹${totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
-        align: "right",
+      stream.on("error", (error) => {
+        console.error("Error uploading PDF to Firebase:", error);
+        reject(error);
       });
-
-    // Footer Section
-    doc.moveDown(2);
-
-    doc
-      .fontSize(10)
-      .text("Conditions/Instructions:", 50, doc.page.height - 60)
-      .text(
-        order.instructions || "Please contact us if you have any questions.",
-        50,
-        doc.page.height - 45,
-        { width: doc.page.width - 100 }
-      );
-
-    // Finalize PDF
-    doc.end();
-    doc.pipe(stream);
-
-    // Upload to Firebase
-    stream.on("finish", async () => {
-      const [url] = await firebaseFile.getSignedUrl({
-        action: "read",
-        expires: "03-09-2491",
-      });
-      resolve(url); // Return the Firebase URL
-    });
-
-    stream.on("error", (error) => {
-      console.error("Error uploading PDF to Firebase:", error);
+    } catch (error) {
+      console.error("Error fetching the logo:", error);
       reject(error);
-    });
+    }
   });
 };
 
