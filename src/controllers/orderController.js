@@ -47,7 +47,6 @@ const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
 
   return transporter.sendMail(mailOptions);
 };
-
 const generateAndUploadInvoice = async (order) => {
   return new Promise(async (resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
@@ -61,6 +60,7 @@ const generateAndUploadInvoice = async (order) => {
     const subtotal = order.subtotal || 0;
     const discount = order.discount || 0;
     const tax = order.tax || 0;
+    const shippingCost = order.shipping_cost || 0;
     const totalAmount = order.amount || 0;
 
     // Logo URL
@@ -94,10 +94,11 @@ const generateAndUploadInvoice = async (order) => {
           `Date of Issue: ${new Date(order.createdDate).toLocaleDateString()}`
         );
 
+      // Fetch and display customer name
       doc
         .text("Billed To:", 50, 160)
         .font("Helvetica-Bold")
-        .text(order.userId?.displayName || "Customer Name")
+        .text(order.userId?.displayName || "Customer Name") // Ensure correct field is used
         .font("Helvetica")
         .text(order.shippingDetails?.address?.street || "Street Address")
         .text(
@@ -111,7 +112,7 @@ const generateAndUploadInvoice = async (order) => {
       doc.moveDown(2);
       const tableTop = 250;
       const tableColumns = ["Product Name", "Qty", "Rate", "Amount"];
-      const columnWidths = [140, 60, 80, 80];
+      const columnWidths = [200, 80, 80, 80];
 
       tableColumns.forEach((text, i) => {
         doc
@@ -146,17 +147,17 @@ const generateAndUploadInvoice = async (order) => {
           .text(product.productName || "-", 50, rowY, {
             width: columnWidths[0],
           })
-          .text(product.quantity || 0, 330, rowY, {
+          .text(product.quantity || 0, 250, rowY, {
             width: columnWidths[1],
             align: "center",
           })
-          .text(`₹${product.price || 0}`, 390, rowY, {
+          .text(`₹${product.price || 0}`, 330, rowY, {
             width: columnWidths[2],
             align: "center",
           })
           .text(
             `₹${((product.price || 0) * (product.quantity || 0)).toFixed(2)}`,
-            470,
+            410,
             rowY,
             {
               width: columnWidths[3],
@@ -172,33 +173,32 @@ const generateAndUploadInvoice = async (order) => {
 
       doc
         .font("Helvetica-Bold")
-        .text("Subtotal:", 400, summaryTop, { align: "left" })
-        .text(`₹${order.subtotal.toFixed(2)}`, 470, summaryTop, {
+        .text("Subtotal:", 400, summaryTop, { align: "right" })
+        .text(`₹${subtotal.toFixed(2)}`, 480, summaryTop, {
           align: "right",
         });
 
       doc
         .font("Helvetica")
-        .text("Discount:", 400, summaryTop + 15, { align: "left" })
-        .text(`-₹${order.discountAmount.toFixed(2)}`, 470, summaryTop + 15, {
+        .text("Discount:", 400, summaryTop + 15, { align: "right" })
+        .text(`-₹${discount.toFixed(2)}`, 480, summaryTop + 15, {
           align: "right",
         });
 
       doc
-        .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
-        .text(`₹${order.tax_amount.toFixed(2)}`, 470, summaryTop + 30, {
-          align: "right",
-        });
+        .text("Tax (12%):", 400, summaryTop + 30, { align: "right" })
+        .text(`₹${tax.toFixed(2)}`, 480, summaryTop + 30, { align: "right" });
+
       doc
-        .text("Delivery Charges:", 400, summaryTop + 30, { align: "left" })
-        .text(`₹${order.shipping_cost}`, 470, summaryTop + 30, {
+        .text("Delivery Charges:", 400, summaryTop + 45, { align: "right" })
+        .text(`₹${shippingCost.toFixed(2)}`, 480, summaryTop + 45, {
           align: "right",
         });
 
       doc
         .font("Helvetica-Bold")
-        .text("Total:", 400, summaryTop + 45, { align: "left" })
-        .text(`₹${order.amount.toFixed(2)}`, 470, summaryTop + 45, {
+        .text("Total:", 400, summaryTop + 60, { align: "right" })
+        .text(`₹${totalAmount.toFixed(2)}`, 480, summaryTop + 60, {
           align: "right",
         });
 
@@ -238,6 +238,7 @@ const generateAndUploadInvoice = async (order) => {
     }
   });
 };
+
 
 exports.getTotalOrdersOfparticularDesigner = async (req, res) => {};
 
