@@ -123,7 +123,7 @@ const generateAndUploadInvoice = async (order) => {
             tableTop,
             {
               width: columnWidths[i],
-              align: i === 4 ? "right" : "left",
+              align: i === 3 ? "right" : "left",
             }
           );
       });
@@ -187,6 +187,11 @@ const generateAndUploadInvoice = async (order) => {
       doc
         .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
         .text(`₹${order.tax_amount.toFixed(2)}`, 470, summaryTop + 30, {
+          align: "right",
+        });
+      doc
+        .text("Delivery Charges:", 400, summaryTop + 30, { align: "left" })
+        .text(`₹${order.shipping_cost}`, 470, summaryTop + 30, {
           align: "right",
         });
 
