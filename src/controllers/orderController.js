@@ -93,13 +93,7 @@ const generateAndUploadInvoice = async (order) => {
     // Table Header
     doc.moveDown(2);
     const tableTop = 250;
-    const tableColumns = [
-      "Item/Service",
-      "Description",
-      "Qty",
-      "Rate",
-      "Amount",
-    ];
+    const tableColumns = ["Item/Service", "Qty", "Rate", "Amount"];
     const columnWidths = [140, 140, 60, 80, 80];
 
     tableColumns.forEach((text, i) => {
@@ -133,7 +127,7 @@ const generateAndUploadInvoice = async (order) => {
         .font("Helvetica")
         .fontSize(10)
         .text(product.productName || "-", 50, rowY, { width: columnWidths[0] })
-        .text(product.description || "-", 190, rowY, { width: columnWidths[1] })
+
         .text(product.quantity || 0, 330, rowY, {
           width: columnWidths[2],
           align: "center",
@@ -160,39 +154,33 @@ const generateAndUploadInvoice = async (order) => {
 
     doc
       .font("Helvetica-Bold")
-      .text("Subtotal:", 400, summaryTop, { align: "right" })
-      .text(`₹${subtotal.toFixed(2)}`, 470, summaryTop, { align: "right" });
-
-    doc
-      .font("Helvetica")
-      .text("Discount:", 400, summaryTop + 15, { align: "right" })
-      .text(`-₹${discount.toFixed(2)}`, 470, summaryTop + 15, {
+      .text("Subtotal:", 400, summaryTop, { align: "left" })
+      .text(`₹${order.subtotal.toFixed(2)}`, 470, summaryTop, {
         align: "right",
       });
 
     doc
-      .text("Tax (5%):", 400, summaryTop + 30, { align: "right" })
-      .text(`₹${tax.toFixed(2)}`, 470, summaryTop + 30, { align: "right" });
+      .font("Helvetica")
+      .text("Discount:", 400, summaryTop + 15, { align: "left" })
+      .text(`-₹${order.discountAmount.toFixed(2)}`, 470, summaryTop + 15, {
+        align: "right",
+      });
+
+    doc
+      .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
+      .text(`₹${order.tax_amount.toFixed(2)}`, 470, summaryTop + 30, {
+        align: "right",
+      });
 
     doc
       .font("Helvetica-Bold")
-      .text("Total:", 400, summaryTop + 45, { align: "right" })
-      .text(`₹${totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
+      .text("Total:", 400, summaryTop + 45, { align: "left" })
+      .text(`₹${order.totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
         align: "right",
       });
 
     // Footer Section
     doc.moveDown(2);
-    doc
-      .fontSize(10)
-      .text("Terms:", 50, doc.page.height - 100)
-      .text(
-        order.terms ||
-          "Payment is due within 15 days of receipt of the invoice.",
-        50,
-        doc.page.height - 85,
-        { width: doc.page.width - 100 }
-      );
 
     doc
       .fontSize(10)
@@ -428,12 +416,12 @@ exports.createOrder = async (req, res) => {
           alt="Logo"
         />
         <h1>Order Received!</h1>
-        <p>Order No: ${orderNumber}</p>
+        <p>Order No: ${order.orderNumber}</p>
       </div>
 
       <!-- Content Section -->
       <div class="content">
-        <h2>Hello, ${user.displayName}!</h2>
+        <h2>Hello, ${order.userId.displayName}!</h2>
         <p>
           Thank you for your order. Your order has been received and will be
           processed shortly. Below are the details of your order:
