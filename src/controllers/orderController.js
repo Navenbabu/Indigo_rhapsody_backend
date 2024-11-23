@@ -63,6 +63,10 @@ const generateAndUploadInvoice = async (order) => {
     const tax = order.tax || 0;
     const totalAmount = order.amount || 0;
 
+    // Add Logo to Header
+    const logoUrl =
+      "https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe";
+
     // Header Section
     doc
       .rect(0, 0, doc.page.width, 100)
@@ -71,11 +75,20 @@ const generateAndUploadInvoice = async (order) => {
       .fontSize(24)
       .text("Invoice", 50, 40);
 
+    doc.image(
+      logoUrl,
+      doc.page.width - 150, // Position the logo on the right
+      30, // Vertical position
+      { width: 100 } // Size of the logo
+    );
+
+    // Invoice Details
     doc
       .fontSize(12)
       .fillColor("#000")
       .text(`Invoice #: ${order.orderId}`, 50, 120)
-      .text(`Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`);
+      .text(`Date of Issue: ${new Date(order.createdAt).toLocaleDateString()}`)
+      .text(`Due Date: ${new Date(order.dueDate).toLocaleDateString()}`);
 
     doc
       .text("Billed To:", 50, 160)
@@ -94,7 +107,7 @@ const generateAndUploadInvoice = async (order) => {
     doc.moveDown(2);
     const tableTop = 250;
     const tableColumns = ["Item/Service", "Qty", "Rate", "Amount"];
-    const columnWidths = [140, 140, 60, 80, 80];
+    const columnWidths = [140, 60, 80, 80];
 
     tableColumns.forEach((text, i) => {
       doc
@@ -127,7 +140,6 @@ const generateAndUploadInvoice = async (order) => {
         .font("Helvetica")
         .fontSize(10)
         .text(product.productName || "-", 50, rowY, { width: columnWidths[0] })
-
         .text(product.quantity || 0, 330, rowY, {
           width: columnWidths[2],
           align: "center",
@@ -155,27 +167,23 @@ const generateAndUploadInvoice = async (order) => {
     doc
       .font("Helvetica-Bold")
       .text("Subtotal:", 400, summaryTop, { align: "left" })
-      .text(`₹${order.subtotal.toFixed(2)}`, 470, summaryTop, {
-        align: "right",
-      });
+      .text(`₹${subtotal.toFixed(2)}`, 470, summaryTop, { align: "right" });
 
     doc
       .font("Helvetica")
       .text("Discount:", 400, summaryTop + 15, { align: "left" })
-      .text(`-₹${order.discountAmount.toFixed(2)}`, 470, summaryTop + 15, {
+      .text(`-₹${discount.toFixed(2)}`, 470, summaryTop + 15, {
         align: "right",
       });
 
     doc
       .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
-      .text(`₹${order.tax_amount.toFixed(2)}`, 470, summaryTop + 30, {
-        align: "right",
-      });
+      .text(`₹${tax.toFixed(2)}`, 470, summaryTop + 30, { align: "right" });
 
     doc
       .font("Helvetica-Bold")
       .text("Total:", 400, summaryTop + 45, { align: "left" })
-      .text(`₹${order.totalAmount}`, 470, summaryTop + 45, {
+      .text(`₹${totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
         align: "right",
       });
 
