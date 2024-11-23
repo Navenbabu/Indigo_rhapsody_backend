@@ -168,7 +168,7 @@ const generateAndUploadInvoice = async (order) => {
       });
 
       // Total Summary
-      const summaryTop = rowY + 20;
+      const summaryTop = rowY + 30;
 
       doc
         .font("Helvetica-Bold")
