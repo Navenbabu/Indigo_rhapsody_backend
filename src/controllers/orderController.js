@@ -57,6 +57,12 @@ const generateAndUploadInvoice = async (order) => {
       metadata: { contentType: "application/pdf" },
     });
 
+    // Ensure numerical properties are valid and default to 0 if undefined
+    const subtotal = order.subtotal || 0;
+    const discount = order.discount || 0;
+    const tax = order.tax || 0;
+    const totalAmount = order.amount || 0;
+
     // Header Section
     doc
       .rect(0, 0, doc.page.width, 100)
@@ -64,12 +70,6 @@ const generateAndUploadInvoice = async (order) => {
       .fillColor("#000")
       .fontSize(24)
       .text("Invoice", 50, 40);
-    // .image(
-    //   "https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe",
-    //   doc.page.width - 150,
-    //   30,
-    //   { width: 100 }
-    // );
 
     doc
       .fontSize(12)
@@ -80,12 +80,13 @@ const generateAndUploadInvoice = async (order) => {
     doc
       .text("Billed To:", 50, 160)
       .font("Helvetica-Bold")
-      .text(order.userId.displayName)
+      .text(order.userId?.displayName || "Customer Name")
       .font("Helvetica")
-      .text(order.shippingDetails.address.street)
-
+      .text(order.shippingDetails?.address?.street || "Street Address")
       .text(
-        `${order.shippingDetails.address.city}, ${order.shippingDetails.address.state} - ${order.shippingDetails.address.country}`,
+        `${order.shippingDetails?.address?.city || "City"}, ${
+          order.shippingDetails?.address?.state || "State"
+        } - ${order.shippingDetails?.address?.country || "Country"}`,
         { align: "left" }
       );
 
@@ -131,20 +132,25 @@ const generateAndUploadInvoice = async (order) => {
       doc
         .font("Helvetica")
         .fontSize(10)
-        .text(product.productName, 50, rowY, { width: columnWidths[0] })
+        .text(product.productName || "-", 50, rowY, { width: columnWidths[0] })
         .text(product.description || "-", 190, rowY, { width: columnWidths[1] })
-        .text(product.quantity, 330, rowY, {
+        .text(product.quantity || 0, 330, rowY, {
           width: columnWidths[2],
           align: "center",
         })
-        .text(`₹${product.price}`, 390, rowY, {
+        .text(`₹${product.price || 0}`, 390, rowY, {
           width: columnWidths[3],
           align: "center",
         })
-        .text(`₹${(product.price * product.quantity).toFixed(2)}`, 470, rowY, {
-          width: columnWidths[4],
-          align: "right",
-        });
+        .text(
+          `₹${((product.price || 0) * (product.quantity || 0)).toFixed(2)}`,
+          470,
+          rowY,
+          {
+            width: columnWidths[4],
+            align: "right",
+          }
+        );
 
       rowY += 20; // Move to the next row
     });
@@ -155,27 +161,23 @@ const generateAndUploadInvoice = async (order) => {
     doc
       .font("Helvetica-Bold")
       .text("Subtotal:", 400, summaryTop, { align: "right" })
-      .text(`₹${order.subtotal.toFixed(2)}`, 470, summaryTop, {
-        align: "right",
-      });
+      .text(`₹${subtotal.toFixed(2)}`, 470, summaryTop, { align: "right" });
 
     doc
       .font("Helvetica")
       .text("Discount:", 400, summaryTop + 15, { align: "right" })
-      .text(`-₹${order.discount.toFixed(2)}`, 470, summaryTop + 15, {
+      .text(`-₹${discount.toFixed(2)}`, 470, summaryTop + 15, {
         align: "right",
       });
 
     doc
       .text("Tax (5%):", 400, summaryTop + 30, { align: "right" })
-      .text(`₹${order.tax.toFixed(2)}`, 470, summaryTop + 30, {
-        align: "right",
-      });
+      .text(`₹${tax.toFixed(2)}`, 470, summaryTop + 30, { align: "right" });
 
     doc
       .font("Helvetica-Bold")
       .text("Total:", 400, summaryTop + 45, { align: "right" })
-      .text(`₹${order.amount.toFixed(2)}`, 470, summaryTop + 45, {
+      .text(`₹${totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
         align: "right",
       });
 
@@ -189,9 +191,7 @@ const generateAndUploadInvoice = async (order) => {
           "Payment is due within 15 days of receipt of the invoice.",
         50,
         doc.page.height - 85,
-        {
-          width: doc.page.width - 100,
-        }
+        { width: doc.page.width - 100 }
       );
 
     doc
@@ -201,9 +201,7 @@ const generateAndUploadInvoice = async (order) => {
         order.instructions || "Please contact us if you have any questions.",
         50,
         doc.page.height - 45,
-        {
-          width: doc.page.width - 100,
-        }
+        { width: doc.page.width - 100 }
       );
 
     // Finalize PDF
