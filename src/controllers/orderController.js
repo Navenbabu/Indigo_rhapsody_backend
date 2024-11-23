@@ -175,7 +175,7 @@ const generateAndUploadInvoice = async (order) => {
     doc
       .font("Helvetica-Bold")
       .text("Total:", 400, summaryTop + 45, { align: "left" })
-      .text(`₹${order.totalAmount.toFixed(2)}`, 470, summaryTop + 45, {
+      .text(`₹${order.totalAmount}`, 470, summaryTop + 45, {
         align: "right",
       });
 
