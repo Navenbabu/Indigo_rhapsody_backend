@@ -31,29 +31,17 @@ exports.ship = async (req, res) => {
       designerRef,
     } = req.body;
 
-    if (!orderId || !designerRef) {
-      console.log(req.body);
-
-      console.log("Order ID or designerRef not provided");
-      return res
-        .status(400)
-        .json({ message: "orderId and designerRef are required." });
+    if (!orderId) {
+      console.log("Order ID not provided");
+      return res.status(400).json({ message: "orderId is required." });
     }
 
     console.log("Checking if shipping already exists for orderId...");
-    const existingShipping = await Shipping.findOne({
-      order_id: orderId,
-      designerRef,
-    });
+    const existingShipping = await Shipping.findOne({ order_id: orderId });
     if (existingShipping) {
-      console.log(
-        "Shipping already exists for this orderId and designerRef:",
-        orderId,
-        designerRef
-      );
+      console.log("Shipping already exists for this orderId:", orderId);
       return res.status(400).json({
-        message:
-          "Shipping has already been created for this orderId and designerRef.",
+        message: "Shipping has already been created for this orderId.",
         data: existingShipping,
       });
     }
@@ -71,6 +59,8 @@ exports.ship = async (req, res) => {
     });
 
     const authBody = await authResponse.json();
+    console.log("Access token response:", authBody);
+
     if (!authResponse.ok) {
       console.error("Failed to get access token:", authBody);
       return res.status(authResponse.status).json({
@@ -96,7 +86,7 @@ exports.ship = async (req, res) => {
 
     console.log("Order details fetched successfully:", order);
 
-    // Filter products by designerRef
+    // Extract designerRef from the first product or adapt as needed
     const filteredProducts = order.products.filter(
       (product) => product.productId.designerRef === designerRef
     );
@@ -136,14 +126,12 @@ exports.ship = async (req, res) => {
       })),
       payment_method: order.paymentMethod,
       total_discount: order.discountAmount || 0,
-      sub_total: filteredProducts.reduce(
-        (sum, product) => sum + product.price * product.quantity,
-        0
-      ),
+      sub_total: order.amount,
       length: length || 10,
       breadth: breadth || 5,
       height: height || 8,
       weight: weight || 1.5,
+      designerRef: designerRef,
     };
 
     console.log("Shipping API request body:", requestBody);
@@ -171,22 +159,19 @@ exports.ship = async (req, res) => {
     const { shipment_id, status } = responseBody;
     console.log("Shipping created successfully with shipment ID:", shipment_id);
 
-    // Update shipping status for filtered products
     order.products.forEach((product) => {
-      if (product.productId.designerRef === designerRef) {
-        product.shipping_status = "Order-Shipped";
-      }
+      product.shipping_status = "Order-Shipped";
     });
 
     await order.save();
     console.log("Shipping status updated in Order document");
 
     const shippingDoc = new Shipping({
-      order_id: orderId,
+      order_id: orderId, // Store the original order ID
       shipmentId: shipment_id,
       status: status,
-      designerRef: designerRef,
-      productDetails: filteredProducts.map((product) => ({
+      designerRef: designerRef, // Store designerRef at the top level
+      productDetails: order.products.map((product) => ({
         productId: product.productId._id,
       })),
       invoiceUrl: "",
@@ -213,7 +198,6 @@ exports.ship = async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
-
 exports.generateInvoice = async (req, res) => {
   try {
     const { shipment_id } = req.body;
