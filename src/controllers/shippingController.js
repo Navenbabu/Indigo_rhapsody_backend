@@ -21,51 +21,26 @@ const SHIPROCKET_RETURN_API_URL =
 exports.ship = async (req, res) => {
   try {
     console.log("Starting ship function...");
-    const { orderId, length, pickup_Location, breadth, height, weight } =
-      req.body;
+    const {
+      orderId,
+      length,
+      pickup_Location,
+      breadth,
+      height,
+      weight,
+      designerRef,
+    } = req.body;
 
     if (!orderId) {
       console.log("Order ID not provided");
       return res.status(400).json({ message: "orderId is required." });
     }
 
-    console.log("Checking if shipping already exists for orderId...");
-    const existingShipping = await Shipping.findOne({ order_id: orderId });
-    if (existingShipping) {
-      console.log("Shipping already exists for this orderId:", orderId);
-      return res.status(400).json({
-        message: "Shipping has already been created for this orderId.",
-        data: existingShipping,
-      });
-    }
-
-    console.log("Fetching access token...");
-    const authResponse = await fetch(AUTH_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: "rajatjiedm@gmail.com", // Replace with actual credentials
-        password: "Raaxas12#", // Replace with actual credentials
-      }),
-    });
-
-    const authBody = await authResponse.json();
-    console.log("Access token response:", authBody);
-
-    if (!authResponse.ok) {
-      console.error("Failed to get access token:", authBody);
-      return res.status(authResponse.status).json({
-        error: authBody.message || "Failed to get access token",
-      });
-    }
-
-    const authToken = authBody.token;
-    console.log("Access token obtained:", authToken);
-
-    console.log("Fetching order details...");
-    const order = await Orders.findOne({ orderId })
+    console.log("Fetching order details with designerRef...");
+    const order = await Orders.findOne({
+      orderId,
+      "products.productId.designerRef": designerRef, // Filter by designerRef
+    })
       .populate({
         path: "products.productId",
         select: "productName sku designerRef",
@@ -73,14 +48,15 @@ exports.ship = async (req, res) => {
       .populate("userId");
 
     if (!order) {
-      console.log("Order not found for orderId:", orderId);
+      console.log("No order found with the specified designerRef and orderId");
       return res.status(404).json({ message: "Order not found" });
     }
 
     console.log("Order details fetched successfully:", order);
 
     // Extract designerRef from the first product or adapt as needed
-    const designerRef = order.products[0]?.productId.designerRef || "N/A";
+    const designerRefFromOrder =
+      order.products[0]?.productId.designerRef || "N/A";
 
     const requestBody = {
       order_id: order.orderId,
@@ -98,13 +74,19 @@ exports.ship = async (req, res) => {
       billing_email: order.userId.email || "example@example.com",
       billing_phone: order.userId.phoneNumber,
       shipping_is_billing: true,
-      order_items: order.products.map((product) => ({
-        name: product.productId.productName,
-        sku: product.productId.sku,
-        units: product.quantity,
-        selling_price: product.price,
-        productId: product.productId._id,
-      })),
+      order_items: order.products
+        .map((product) =>
+          product.productId.designerRef === designerRef
+            ? {
+                name: product.productId.productName,
+                sku: product.productId.sku,
+                units: product.quantity,
+                selling_price: product.price,
+                productId: product.productId._id,
+              }
+            : null
+        )
+        .filter(Boolean),
       payment_method: order.paymentMethod,
       total_discount: order.discountAmount || 0,
       sub_total: order.amount,
@@ -140,7 +122,9 @@ exports.ship = async (req, res) => {
     console.log("Shipping created successfully with shipment ID:", shipment_id);
 
     order.products.forEach((product) => {
-      product.shipping_status = "Order-Shipped";
+      if (product.productId.designerRef === designerRef) {
+        product.shipping_status = "Order-Shipped";
+      }
     });
 
     await order.save();
@@ -151,9 +135,11 @@ exports.ship = async (req, res) => {
       shipmentId: shipment_id,
       status: status,
       designerRef: designerRef, // Store designerRef at the top level
-      productDetails: order.products.map((product) => ({
-        productId: product.productId._id,
-      })),
+      productDetails: order.products
+        .filter((product) => product.productId.designerRef === designerRef)
+        .map((product) => ({
+          productId: product.productId._id,
+        })),
       invoiceUrl: "",
       length: length || 10,
       breadth: breadth || 5,
@@ -178,6 +164,7 @@ exports.ship = async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
+
 exports.generateInvoice = async (req, res) => {
   try {
     const { shipment_id } = req.body;
@@ -649,8 +636,4 @@ exports.addPickupLocation = async (req, res) => {
   }
 };
 
-
-exports.shippingWebhook = async (req, res) => {
-
-  
-}
+exports.shippingWebhook = async (req, res) => {};
