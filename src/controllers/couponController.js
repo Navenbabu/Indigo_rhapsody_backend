@@ -75,36 +75,13 @@ exports.getCoupon = async (req, res) => {
 };
 exports.getAllCoupons = async (req, res) => {
   try {
-    // Get the current date in UTC
-    const currentDate = new Date().toISOString();
-    console.log("Current Date (UTC):", currentDate);
-
-    // Fetch coupons where expiryDate is greater than or equal to the current UTC date
-    const coupons = await Coupon.find({
-      expiryDate: { $gte: currentDate },
-    });
-
-    // Log the results for debugging
-    console.log("Coupons Found:", coupons);
-
-    if (!coupons.length) {
-      return res.status(404).json({ message: "No active coupons found" });
-    }
-
-    res.status(200).json({
-      message: "Coupons fetched successfully",
-      data: coupons,
-    });
-  } catch (error) {
-    console.error("Error fetching coupons:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.getAllCouponsAll = async (req, res) => {
-  try {
     // Fetch all coupons from the database
     const coupons = await Coupon.find();
+
+    // Check if coupons exist
+    if (!coupons.length) {
+      return res.status(404).json({ message: "No coupons found" });
+    }
 
     // Respond with the fetched coupons
     res.status(200).json({
@@ -113,6 +90,7 @@ exports.getAllCouponsAll = async (req, res) => {
     });
   } catch (error) {
     // Handle errors and respond with an error message
+    console.error("Error fetching coupons:", error);
     res.status(500).json({
       message: "Error fetching coupons",
       error: error.message,
@@ -120,6 +98,7 @@ exports.getAllCouponsAll = async (req, res) => {
   }
 };
 
+// Get a coupon by ID
 exports.getCouponById = async (req, res) => {
   try {
     const { id } = req.params;
