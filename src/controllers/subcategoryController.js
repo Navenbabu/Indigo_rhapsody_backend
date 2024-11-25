@@ -6,9 +6,9 @@ const { bucket } = require("./../service/firebaseServices"); // Firebase storage
 // 1. Create a new SubCategory
 exports.createSubCategory = async (req, res) => {
   try {
-    const { name, categoryId } = req.body;
+    const { name, categoryId, image } = req.body;
 
-    console.log("Received Category ID:", categoryId); // Log the categoryId
+    console.log("Received Category ID:", categoryId);
 
     // Check if the categoryId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(categoryId.trim())) {
@@ -17,17 +17,30 @@ exports.createSubCategory = async (req, res) => {
 
     // Verify if the category exists
     const category = await Category.findById(categoryId.trim());
-    console.log("Category found:", category); // Log the category object
+    console.log("Category found:", category);
 
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
 
+    // Check for duplicate subcategory with the same name under the same category
+    const existingSubCategory = await SubCategory.findOne({
+      name: name.trim(),
+      categoryId: category._id,
+    });
+
+    if (existingSubCategory) {
+      return res.status(400).json({
+        message:
+          "A subcategory with this name already exists under the selected category",
+      });
+    }
+
     // Create the new subcategory
     const newSubCategory = new SubCategory({
-      name,
+      name: name.trim(),
       categoryId: category._id,
-      image: req.body.image,
+      image,
     });
 
     await newSubCategory.save();

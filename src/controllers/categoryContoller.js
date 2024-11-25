@@ -14,9 +14,17 @@ exports.createCategory = async (req, res) => {
         .json({ message: "Name and image URL are required" });
     }
 
+    // Check for duplicate category
+    const existingCategory = await Category.findOne({ name: name.trim() });
+    if (existingCategory) {
+      return res.status(400).json({
+        message: "A category with this name already exists",
+      });
+    }
+
     // Create the new category
     const newCategory = new Category({
-      name,
+      name: name.trim(),
       image: imageUrl,
     });
 
@@ -157,4 +165,3 @@ exports.updateCategory = async (req, res) => {
     return res.status(500).json({ message: "Error updating category", error });
   }
 };
-
