@@ -88,7 +88,7 @@ exports.ship = async (req, res) => {
 
     // Extract designerRef from the first product or adapt as needed
     const filteredProducts = order.products.filter(
-      (product) => product.productId.designerRef === designerRef
+      (product) => product.designerRef === designerRef
     );
 
     if (filteredProducts.length === 0) {
