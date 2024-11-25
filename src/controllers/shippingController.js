@@ -32,6 +32,8 @@ exports.ship = async (req, res) => {
     } = req.body;
 
     if (!orderId || !designerRef) {
+      console.log(req.body);
+
       console.log("Order ID or designerRef not provided");
       return res
         .status(400)
