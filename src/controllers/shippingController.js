@@ -21,20 +21,37 @@ const SHIPROCKET_RETURN_API_URL =
 exports.ship = async (req, res) => {
   try {
     console.log("Starting ship function...");
-    const { orderId, length, pickup_Location, breadth, height, weight } =
-      req.body;
+    const {
+      orderId,
+      length,
+      pickup_Location,
+      breadth,
+      height,
+      weight,
+      designerRef,
+    } = req.body;
 
-    if (!orderId) {
-      console.log("Order ID not provided");
-      return res.status(400).json({ message: "orderId is required." });
+    if (!orderId || !designerRef) {
+      console.log("Order ID or designerRef not provided");
+      return res
+        .status(400)
+        .json({ message: "orderId and designerRef are required." });
     }
 
     console.log("Checking if shipping already exists for orderId...");
-    const existingShipping = await Shipping.findOne({ order_id: orderId });
+    const existingShipping = await Shipping.findOne({
+      order_id: orderId,
+      designerRef,
+    });
     if (existingShipping) {
-      console.log("Shipping already exists for this orderId:", orderId);
+      console.log(
+        "Shipping already exists for this orderId and designerRef:",
+        orderId,
+        designerRef
+      );
       return res.status(400).json({
-        message: "Shipping has already been created for this orderId.",
+        message:
+          "Shipping has already been created for this orderId and designerRef.",
         data: existingShipping,
       });
     }
@@ -52,8 +69,6 @@ exports.ship = async (req, res) => {
     });
 
     const authBody = await authResponse.json();
-    console.log("Access token response:", authBody);
-
     if (!authResponse.ok) {
       console.error("Failed to get access token:", authBody);
       return res.status(authResponse.status).json({
@@ -79,8 +94,20 @@ exports.ship = async (req, res) => {
 
     console.log("Order details fetched successfully:", order);
 
-    // Extract designerRef from the first product or adapt as needed
-    const designerRef = order.products[0]?.productId.designerRef || "N/A";
+    // Filter products by designerRef
+    const filteredProducts = order.products.filter(
+      (product) => product.productId.designerRef === designerRef
+    );
+
+    if (filteredProducts.length === 0) {
+      console.log(
+        "No products found for the specified designerRef:",
+        designerRef
+      );
+      return res
+        .status(404)
+        .json({ message: "No products found for the specified designerRef." });
+    }
 
     const requestBody = {
       order_id: order.orderId,
@@ -98,22 +125,19 @@ exports.ship = async (req, res) => {
       billing_email: order.userId.email || "example@example.com",
       billing_phone: order.userId.phoneNumber,
       shipping_is_billing: true,
-      order_items: order.products
-        .map((product) =>
-          product.productId.designerRef === designerRef
-            ? {
-                name: product.productId.productName,
-                sku: product.productId.sku,
-                units: product.quantity,
-                selling_price: product.price,
-                productId: product.productId._id,
-              }
-            : null
-        )
-        .filter(Boolean),
+      order_items: filteredProducts.map((product) => ({
+        name: product.productId.productName,
+        sku: product.productId.sku,
+        units: product.quantity,
+        selling_price: product.price,
+        productId: product.productId._id,
+      })),
       payment_method: order.paymentMethod,
       total_discount: order.discountAmount || 0,
-      sub_total: order.amount,
+      sub_total: filteredProducts.reduce(
+        (sum, product) => sum + product.price * product.quantity,
+        0
+      ),
       length: length || 10,
       breadth: breadth || 5,
       height: height || 8,
@@ -145,19 +169,22 @@ exports.ship = async (req, res) => {
     const { shipment_id, status } = responseBody;
     console.log("Shipping created successfully with shipment ID:", shipment_id);
 
+    // Update shipping status for filtered products
     order.products.forEach((product) => {
-      product.shipping_status = "Order-Shipped";
+      if (product.productId.designerRef === designerRef) {
+        product.shipping_status = "Order-Shipped";
+      }
     });
 
     await order.save();
     console.log("Shipping status updated in Order document");
 
     const shippingDoc = new Shipping({
-      order_id: orderId, // Store the original order ID
+      order_id: orderId,
       shipmentId: shipment_id,
       status: status,
-      designerRef: designerRef, // Store designerRef at the top level
-      productDetails: order.products.map((product) => ({
+      designerRef: designerRef,
+      productDetails: filteredProducts.map((product) => ({
         productId: product.productId._id,
       })),
       invoiceUrl: "",
@@ -184,6 +211,7 @@ exports.ship = async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
+
 exports.generateInvoice = async (req, res) => {
   try {
     const { shipment_id } = req.body;
