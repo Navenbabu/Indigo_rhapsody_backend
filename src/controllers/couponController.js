@@ -86,7 +86,25 @@ exports.getAllCoupons = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-// Get a coupon by ID
+exports.getAllCouponsAll = async (req, res) => {
+  try {
+    // Fetch all coupons from the database
+    const coupons = await Coupon.find();
+
+    // Respond with the fetched coupons
+    res.status(200).json({
+      message: "Coupons fetched successfully",
+      data: coupons,
+    });
+  } catch (error) {
+    // Handle errors and respond with an error message
+    res.status(500).json({
+      message: "Error fetching coupons",
+      error: error.message,
+    });
+  }
+};
+
 exports.getCouponById = async (req, res) => {
   try {
     const { id } = req.params;
