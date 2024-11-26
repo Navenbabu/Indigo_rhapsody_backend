@@ -7,6 +7,10 @@ const {
   markCouponAsUsed,
 } = require("../utils/couponUtils");
 
+function roundToTwoDecimals(value) {
+  return Math.round(value * 100) / 100;
+}
+
 // Create a new coupon
 exports.createCoupon = async (req, res) => {
   try {
