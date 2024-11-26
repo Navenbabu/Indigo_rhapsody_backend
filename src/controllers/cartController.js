@@ -76,7 +76,7 @@ exports.createCart = async (req, res) => {
     }
 
     // Calculate Tax Amount (GST at 12%)
-    const tax_amount = subtotal * 0.12;
+    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
 
     // Calculate Shipping Cost based on subtotal
     const shipping_cost = subtotal > 3000 ? 0 : 99;
@@ -234,8 +234,7 @@ exports.updateQuantity = async (req, res) => {
     cart.products.forEach((item) => {
       subtotal += item.price * item.quantity;
     });
-
-    const tax_amount = subtotal * 0.12;
+    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     cart.subtotal = subtotal;
@@ -307,7 +306,7 @@ exports.deleteItem = async (req, res) => {
       subtotal += item.price * item.quantity;
     });
 
-    const tax_amount = subtotal * 0.12;
+    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     cart.subtotal = subtotal;
@@ -467,7 +466,7 @@ exports.upsertCart = async (req, res) => {
     });
 
     // Calculate tax and shipping
-    const tax_amount = subtotal * 0.12;
+    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     // Apply discount if available
