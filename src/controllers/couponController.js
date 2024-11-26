@@ -155,7 +155,6 @@ exports.applyCoupon = async (req, res) => {
       });
     }
 
-    // If not used, allow the coupon to be applied
     coupon.usedBy.push(userId); // Add user to usedBy list
     await coupon.save();
 
@@ -167,16 +166,21 @@ exports.applyCoupon = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 exports.applyCouponToCart = async (req, res) => {
   try {
-    const { cartId, couponCode, userId } = req.body;
+    const { cartId, couponId, userId } = req.body; // Changed from couponCode to couponId
 
-    // Validate the coupon
-    const coupon = await validateCoupon(couponCode);
+    // Validate the coupon by ID
+    const coupon = await Coupon.findById(couponId); // Fetch coupon using couponId
+    if (!coupon) {
+      return res.status(404).json({ message: "Coupon not found" }); // Handle coupon not found case
+    }
+
+    console.log("Coupon Validated:", coupon);
 
     // Check if the user has already used this coupon
-    if (hasUserUsedCoupon(coupon, userId)) {
+    const used = hasUserUsedCoupon(coupon, userId);
+    if (used) {
       return res
         .status(403)
         .json({ message: "You have already used this coupon" });
@@ -196,29 +200,33 @@ exports.applyCouponToCart = async (req, res) => {
     }
 
     // Calculate new totals
-    const subtotal = cart.products.reduce((sum, product) => {
-      return sum + product.price * product.quantity;
-    }, 0);
-
+    const subtotal = cart.products.reduce(
+      (sum, product) => sum + product.price * product.quantity,
+      0
+    );
     const discountAmount = coupon.couponAmount;
     const totalAmount =
       subtotal - discountAmount + cart.shipping_cost + cart.tax_amount;
 
-    cart.subtotal = subtotal;
+    // Update cart details
+    cart.subtotal = roundToTwoDecimals(subtotal);
     cart.discount_applied = true;
-    cart.discount_amount = discountAmount;
-    cart.total_amount = totalAmount;
+    cart.discount_amount = roundToTwoDecimals(discountAmount);
+    cart.total_amount = roundToTwoDecimals(totalAmount);
 
+    // Save the cart
     await cart.save();
 
     // Mark the coupon as used by this user
     await markCouponAsUsed(coupon, userId);
+    console.log("Coupon marked as used for user:", userId);
 
     res.status(200).json({
       message: "Coupon applied successfully",
       cart,
     });
   } catch (error) {
+    console.error("Error applying coupon:", error);
     res.status(500).json({ error: error.message });
   }
 };
