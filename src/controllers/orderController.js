@@ -239,7 +239,6 @@ const generateAndUploadInvoice = async (order) => {
   });
 };
 
-
 exports.getTotalOrdersOfparticularDesigner = async (req, res) => {};
 
 // Create Order Controller
@@ -1013,15 +1012,27 @@ exports.getTotalOrdersForDesigner = async (req, res) => {
   try {
     const { designerId } = req.params; // Get the designer ID from the request parameters
 
-    // Aggregate to count the total number of orders per designer
+    // Aggregate to count the total number of unique orders per designer
     const totalOrders = await Order.aggregate([
-      { $unwind: "$products" }, // Unwind products to group by designerRef
+      { $unwind: "$products" }, // Unwind products to access individual product details
       { $match: { "products.designerRef": designerId } }, // Match the specific designer ID
       {
         $group: {
-          _id: "$products.designerRef",
-          totalOrders: { $sum: 1 }, // Count each order that includes the designer's products
+          _id: "$_id", // Group by order ID (not designerRef) to count unique orders
+          designerOrders: { $addToSet: "$products.designerRef" }, // Collect designer IDs in a set to avoid duplicates
         },
+      },
+      {
+        $project: {
+          _id: 1, // Keep the order ID
+          designerOrders: { $size: "$designerOrders" }, // Get the size of the designerOrders set (1 if the order includes the designer)
+        },
+      },
+      {
+        $match: { designerOrders: { $gt: 0 } }, // Only keep orders that have at least one product from the designer
+      },
+      {
+        $count: "totalOrders", // Count the total number of unique orders for this designer
       },
     ]);
 
