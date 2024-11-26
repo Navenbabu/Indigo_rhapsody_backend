@@ -101,6 +101,11 @@ exports.ship = async (req, res) => {
         .json({ message: "No products found for the specified designerRef." });
     }
 
+    // Calculate the subtotal for the products of the specified designer
+    const subtotal = filteredProducts.reduce((total, product) => {
+      return total + product.price * product.quantity;
+    }, 0);
+
     const requestBody = {
       order_id: order.orderId,
       order_date: order.orderDate.toISOString(),
@@ -126,7 +131,7 @@ exports.ship = async (req, res) => {
       })),
       payment_method: order.paymentMethod,
       total_discount: order.discountAmount || 0,
-      sub_total: order.amount,
+      sub_total: subtotal, // Updated subtotal for this designer
       length: length || 10,
       breadth: breadth || 5,
       height: height || 8,
@@ -198,6 +203,7 @@ exports.ship = async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 };
+
 exports.generateInvoice = async (req, res) => {
   try {
     const { shipment_id } = req.body;
